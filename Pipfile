@@ -7,6 +7,9 @@ name = "pypi"
 django = "*"
 python-decouple = "*"
 mysqlclient = "*"
+django-cors-headers = "*"
+djangorestframework = "*"
+djangorestframework-simplejwt = "*"
 
 [dev-packages]
 
