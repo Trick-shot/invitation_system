@@ -1,10 +1,10 @@
 from django.urls import path, include
 
-from . import views
+from .views import InvitationViewSet
 from rest_framework_nested import routers
 
 router = routers.DefaultRouter()
-router.register('invitations', views.InvitationViewSet, basename='invitation')
+router.register('invitations', InvitationViewSet, basename='invitation')
 
 urlpatterns = [
     path(r'', include(router.urls)),
