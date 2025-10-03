@@ -10,4 +10,4 @@ class Invitation(models.Model):
 
 class Guest(models.Model):
     name = models.CharField(max_length=255)
-    phone_number = models.CharField(max_length=10)
+    phone_number = models.CharField(max_length=20)
