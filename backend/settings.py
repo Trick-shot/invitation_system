@@ -27,7 +27,8 @@ SITE_URL = "http://localhost:8000"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['trickshot.tech', 'www.trickshot.tech', '75.119.149.24']
+ALLOWED_HOSTS = ['trickshot.tech', 'www.trickshot.tech', '75.119.149.24', 'localhost',
+                 '127.0.0.1']
 
 # Application definition
 
