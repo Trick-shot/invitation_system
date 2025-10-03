@@ -2,4 +2,5 @@
 
 # file: ~/.gitignore_global
 .DS_Store
-.idea
+.idea__pycache__/
+*.pyc
