@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -15,7 +17,6 @@ from .serializers import InvitationSerializer
 from .models import Invitation
 
 
-# -*- coding: utf-8 -*-
 
 class InvitationViewSet(ModelViewSet):
     serializer_class = InvitationSerializer
@@ -38,6 +39,7 @@ class InvitationViewSet(ModelViewSet):
         scan_url = f"{settings.SITE_URL}{reverse('invitation-scan', args=[invitation.id])}"
 
         download_url = f"{settings.SITE_URL}{settings.MEDIA_URL}cards/invitation_card_{invitation.id}.png"
+        print("SITE_URL used:", settings.SITE_URL)
 
         # Paths
         card_template_path = os.path.join(settings.MEDIA_ROOT, "card_template.png")
@@ -75,9 +77,9 @@ class InvitationViewSet(ModelViewSet):
         message = (
             "Kwa mioyo iliyojaa furaha na shukrani, familia ya Bw & Bibi Moses Nyoni "
             "inakualika katika tafrija ya adhimisho la Sakramenti ya komunio ya kwanza "
-            "ya watoto wao wapendwa, Edin Kanduta na Edinson Kahangulila. "
-            "Zingatia: Mwaliko huu ni kwa mtu mmoja pekee. Bofya hapa kupata kadi ya mwaliko"
-            f"{card_link}"
+            "ya watoto wao wapendwa, Edin Kanduta na Edinson Kahangulila."
+            "Zingatia: Mwaliko huu ni kwa mtu mmoja pekee. Bofya hapa kupata kadi ya mwaliko."
+            f"{"  "+ card_link}"
         )
 
         # Sending on SMS
@@ -86,7 +88,7 @@ class InvitationViewSet(ModelViewSet):
         wa_number = "+255684581734"
 
         # Send SMS to all recipients
-        response_sms = sms.send(message, recipients)
+        response_sms = sms.send(message.encode("utf-8"), recipients)
 
         # # Send WhatsApp individually
         # for recipient in recipients:

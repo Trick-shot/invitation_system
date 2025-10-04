@@ -15,6 +15,7 @@ django-qr-code = "*"
 drf-nested-routers = "*"
 twilio = "*"
 gunicorn = "*"
+africastalking = "*"
 
 [dev-packages]
 
