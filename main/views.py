@@ -2,10 +2,20 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from django.conf import settings
+from django.urls import reverse
+from PIL import Image
+
+import os.path
+
+import africastalking
+import segno
 
 from .serializers import InvitationSerializer
 from .models import Invitation
 
+
+# -*- coding: utf-8 -*-
 
 class InvitationViewSet(ModelViewSet):
     serializer_class = InvitationSerializer
@@ -23,3 +33,77 @@ class InvitationViewSet(ModelViewSet):
             )
         except Invitation.DoesNotExist:
             return Response({"error": "Invitation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def generate_card(self, invitation):
+        scan_url = f"{settings.SITE_URL}{reverse('invitation-scan', args=[invitation.id])}"
+
+        download_url = f"{settings.SITE_URL}{settings.MEDIA_URL}cards/invitation_card_{invitation.id}.png"
+
+        # Paths
+        card_template_path = os.path.join(settings.MEDIA_ROOT, "card_template.png")
+        final_card_path = os.path.join(settings.MEDIA_ROOT, f"cards/invitation_card_{invitation.id}.png")
+        qr_path = os.path.join(settings.MEDIA_ROOT, f"qr_codes/qr_{invitation.id}.png")
+        os.makedirs(os.path.dirname(final_card_path), exist_ok=True)
+        os.makedirs(os.path.dirname(qr_path), exist_ok=True)
+
+        # Generate QR
+        qr = segno.make(scan_url)
+        dpi = 300
+        slot_width_mm = 18.78
+        slot_width_px = int((slot_width_mm / 25.4) * dpi)
+        scale = slot_width_px // qr.symbol_size()[0]
+        qr.save(qr_path, scale=scale)
+
+        # Open template and paste QR
+        card = Image.open(card_template_path)
+        qr_img = Image.open(qr_path)
+
+        dpi = 300
+        x_mm, y_mm = 46, 109.8
+        x_px = int((x_mm / 25.4) * dpi)
+        y_px = int((y_mm / 25.4) * dpi)
+
+        invitation.qr_code = f"cards/invitation_card_{invitation.id}.png"
+        invitation.save()
+
+        card.paste(qr_img, (x_px, y_px))
+        card.save(final_card_path)
+        return card, download_url
+
+    def send_invitation(self, recipients, card_link):
+        africastalking.initialize(settings.AFRICASTALKING_USERNAME, settings.AFRICASTALKING_API_KEY)
+        message = (
+            "Kwa mioyo iliyojaa furaha na shukrani, familia ya Bw & Bibi Moses Nyoni "
+            "inakualika katika tafrija ya adhimisho la Sakramenti ya komunio ya kwanza "
+            "ya watoto wao wapendwa, Edin Kanduta na Edinson Kahangulila. "
+            "Zingatia: Mwaliko huu ni kwa mtu mmoja pekee. Bofya hapa kupata kadi ya mwaliko"
+            f"{card_link}"
+        )
+
+        # Sending on SMS
+        sms = africastalking.SMS
+        whatsapp = africastalking.Whatsapp
+        wa_number = "+255684581734"
+
+        # Send SMS to all recipients
+        response_sms = sms.send(message, recipients)
+
+        # # Send WhatsApp individually
+        # for recipient in recipients:
+        #     body = {"message": "Hello! This is a test WhatsApp message from Africa's Talking."}
+        #     response_whatsapp = whatsapp.send(body=body, wa_number=wa_number, phone_number=recipient)
+        #     print("WhatsApp response:", response_whatsapp)
+
+        print("SMS response:", response_sms)
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+
+        invitation_id = response.data["id"]
+        invitation = Invitation.objects.get(id=invitation_id)
+
+        card, download_url = self.generate_card(invitation)
+
+        if invitation.guest and invitation.guest.phone_number:
+            self.send_invitation([invitation.guest.phone_number], download_url)
+        return response
