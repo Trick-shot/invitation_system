@@ -1,5 +1,6 @@
 import os.path
 from zipapp import create_archive
+import africastalking
 
 import segno
 from PIL.ImageOps import scale
@@ -62,12 +63,33 @@ class InvitationSerializer(ModelSerializer):
         card.paste(qr_img, (x_px, y_px))
         card.save(final_card_path)
 
+        AFRICASTALKING_USERNAME = "sandbox"
+        AFRICASTALKING_API_KEY = "atsk_bcfa03d2def08de3557d47af89b2839e952d3881c32c8f89e0b06b1ee5acb3e5db16cb4e"
+
+        # Initialize Africa's Talking
+        africastalking.initialize(AFRICASTALKING_USERNAME, AFRICASTALKING_API_KEY)
+
+        # Get the SMS service
+        sms = africastalking.SMS
+
+        # Phone number(s) to send to
+        recipients = ["+255766719100"]  # Replace with your number
+        message = "Hello! This is a test message."
+
+        # Send SMS
+        try:
+            response = sms.send(message, recipients)
+            print("SMS sent successfully!")
+            print(response)
+        except Exception as e:
+            print("Error:", e)
+
         # Save path to model
         invitation.qr_code = f"cards/invitation_card_{invitation.id}.png"
         invitation.save()
 
         # Send invitation via Twilio
-        self.send_invitation_message(guest.phone_number, download_url)
+        # self.send_invitation_message(guest.phone_number, download_url)
 
         return invitation
 
