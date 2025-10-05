@@ -57,8 +57,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CSRF_COOKIE_HTTPONLY = False   # let JS read it
+CSRF_COOKIE_SECURE = False      # only over HTTPS
+
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173'
+    "https://trickshot.tech",
+    "https://www.trickshot.tech"
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://trickshot.tech",
+    "https://www.trickshot.tech"
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -150,7 +158,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
 }
 
 AFRICASTALKING_USERNAME = config("AFRICASTALKING_USERNAME")

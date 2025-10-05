@@ -20,7 +20,7 @@ function App() {
         <AuthContext value={{authUser, setAuthUser}}>
             <Routes>
                 <Route index element={<Login/>} path="login"/>
-                <Route element={<ProtectedRouter navigateTo="login" user={authUser}/>}>
+                <Route path="/" element={<ProtectedRouter navigateTo="login" user={authUser}/>}>
                     <Route element={<Dashboard/>} path="dashboard"/>
                     <Route element={<Guest/>} path="guests"/>
                     <Route element={<AddGuest/>} path="addGuests"/>
