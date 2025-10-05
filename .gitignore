@@ -4,3 +4,6 @@
 .DS_Store
 .idea__pycache__/
 *.pyc
+# Ignore JetBrains IDE project files
+.idea/
+
