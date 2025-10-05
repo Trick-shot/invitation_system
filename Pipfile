@@ -16,6 +16,7 @@ drf-nested-routers = "*"
 twilio = "*"
 gunicorn = "*"
 africastalking = "*"
+whitenoise = "*"
 
 [dev-packages]
 

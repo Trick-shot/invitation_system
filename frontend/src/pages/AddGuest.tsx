@@ -1,10 +1,11 @@
-import {Box, TextField, Button} from "@mui/material";
+import {Box, TextField, Button, Alert} from "@mui/material";
 import type {AxiosError} from "axios";
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import guestApi from "../api/guest.ts";
 import SubButtonHeader from "../components/SubButtonHeader.tsx";
 import Header from "../components/Header.tsx";
+
 
 const AddGuest = () => {
     const [loginFailed, setLoginFailed] = useState(false);
@@ -43,7 +44,14 @@ const AddGuest = () => {
             alignItems: "center",
             flexDirection: "column",
 
-        }}>
+        }}>{
+            loginFailed && <Alert sx={{
+                marginTop: 10,
+                width: "85%"
+            }} severity="error">
+                Add user failed
+            </Alert>
+        }
             <Header/>
             <SubButtonHeader buttonText='Guest' onClick={() => navigate('/guests')}/>
             <Box component="form" onSubmit={handleSubmit} sx={{

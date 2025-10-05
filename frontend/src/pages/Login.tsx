@@ -12,7 +12,7 @@ import type {UserApiType} from "../types/UserType.ts";
 
 
 const Login = () => {
-    const [loginFailed, setLoginFailed] = useState(false);
+    const [, setLoginFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({email: "", password: ""});
 
@@ -141,7 +141,7 @@ const Login = () => {
                     }}
                 />
             </Stack>
-            <Button type="submit" variant="contained" sx={{
+            <Button type="submit" variant="contained" loading={loading} sx={{
                 width: "90%",
                 height: "7%",
                 backgroundColor: "#BA68C8",
