@@ -1,8 +1,8 @@
 import Axios from "axios";
 
 const apiClient = Axios.create({
-    baseURL: "https://trickshot.tech/api/",
-});
+    baseURL: "https://trickshot.tech/",
+});          
 
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
