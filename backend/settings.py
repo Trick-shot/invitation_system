@@ -23,11 +23,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-SITE_URL = "https://trickshot.tech"
+SITE_URL = config('SITE_URL')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['trickshot.tech', 'www.trickshot.tech', '75.119.149.24', 'localhost', '127.0.0.1']
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -57,17 +59,31 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CSRF_COOKIE_HTTPONLY = False  # let JS read it
-CSRF_COOKIE_SECURE = False  # only over HTTPS
+CSRF_COOKIE_HTTPONLY = False   # let JS read it
+# CSRF_COOKIE_SECURE = True     # only over HTTPS
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 CORS_ALLOWED_ORIGINS = [
     "https://trickshot.tech",
-    "https://www.trickshot.tech",
-    'http://localhost:5173'
+    "https://www.trickshot.tech"
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://trickshot.tech",
     "https://www.trickshot.tech"
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-csrftoken',
+    'accept',
+    'origin',
+    'user-agent',
+    'x-requested-with'
 ]
 
 ROOT_URLCONF = 'backend.urls'

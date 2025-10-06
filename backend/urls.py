@@ -23,10 +23,10 @@ from backend.View import FrontendAppView
 
 urlpatterns = [
     # re_path(r'^.*$', FrontendAppView.as_view(), name='frontend'),
+    # re_path(r'^.*$', FrontendAppView.as_view(), name='frontend'),
     path('admin/', admin.site.urls),
-    path('auth/', include('core.urls')),
-    path('main/', include('main.urls')),
-    re_path(r'^.*$', FrontendAppView.as_view(), name='frontend'),
+    path('api/auth/', include('core.urls')),
+    path('api/', include('main.urls'))
 ]
 
 if settings.DEBUG:
