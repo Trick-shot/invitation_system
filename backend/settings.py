@@ -27,7 +27,8 @@ SITE_URL = config('SITE_URL')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['trickshot.tech', 'www.trickshot.tech', '75.119.149.24', 'localhost', '127.0.0.1']
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -58,7 +60,10 @@ MIDDLEWARE = [
 ]
 
 CSRF_COOKIE_HTTPONLY = False   # let JS read it
-CSRF_COOKIE_SECURE = False      # only over HTTPS
+# CSRF_COOKIE_SECURE = True     # only over HTTPS
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 CORS_ALLOWED_ORIGINS = [
     "https://trickshot.tech",
@@ -67,6 +72,18 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://trickshot.tech",
     "https://www.trickshot.tech"
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-csrftoken',
+    'accept',
+    'origin',
+    'user-agent',
+    'x-requested-with'
 ]
 
 ROOT_URLCONF = 'backend.urls'

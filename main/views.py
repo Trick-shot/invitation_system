@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from django.conf import settings
 from django.urls import reverse
+from django.http import JsonResponse
 from PIL import Image
 
 import os.path
@@ -15,6 +16,11 @@ import segno
 
 from .serializers import InvitationSerializer
 from .models import Invitation
+
+
+def hello(request):
+    return JsonResponse({"message":"iamtrickshot and i like writing spaghetti code and when am told i say i know where i kept my configs as if i know but i don't💀 Because kussy will solve it!"})
+
 
 
 
