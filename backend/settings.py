@@ -59,15 +59,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CSRF_COOKIE_HTTPONLY = False   # let JS read it
+CSRF_COOKIE_HTTPONLY = False  # let JS read it
 # CSRF_COOKIE_SECURE = True     # only over HTTPS
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-
 CORS_ALLOWED_ORIGINS = [
     "https://trickshot.tech",
-    "https://www.trickshot.tech"
+    "https://www.trickshot.tech",
+    "http://localhost:5173",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://trickshot.tech",

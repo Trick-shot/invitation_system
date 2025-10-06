@@ -1,37 +1,33 @@
 # -*- coding: utf-8 -*-
-
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from rest_framework.utils.representation import serializer_repr
 from rest_framework.viewsets import ModelViewSet
 from django.conf import settings
 from django.urls import reverse
-from django.http import JsonResponse
 from PIL import Image
-
 import os.path
-
 import africastalking
 import segno
-
-from .serializers import InvitationSerializer
+from .serializers import InvitationSerializer, GuestCountSerializer
 from .models import Invitation
-
-
-def hello(request):
-    return JsonResponse({"message":"iamtrickshot and i like writing spaghetti code and when am told i say i know where i kept my configs as if i know but i don't💀 Because kussy will solve it!"})
-
-
 
 
 class InvitationViewSet(ModelViewSet):
     serializer_class = InvitationSerializer
     queryset = Invitation.objects.all()
 
-    @action(detail=True, methods=['get', 'post'])
+    @action(detail=True, methods=['post'])
     def scan(self, request, pk=None):
         try:
             invitation = self.get_object()
+            if invitation.scanned:
+                return Response(
+                    {"error": "This invitation has already been scanned."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             invitation.scanned = True
             invitation.save()
             return Response(
@@ -85,7 +81,7 @@ class InvitationViewSet(ModelViewSet):
             "inakualika katika tafrija ya adhimisho la Sakramenti ya komunio ya kwanza "
             "ya watoto wao wapendwa, Edin Kanduta na Edinson Kahangulila."
             "Zingatia: Mwaliko huu ni kwa mtu mmoja pekee. Bofya hapa kupata kadi ya mwaliko."
-            f"{"  "+ card_link}"
+            f"{"  " + card_link}"
         )
 
         # Sending on SMS
@@ -115,3 +111,20 @@ class InvitationViewSet(ModelViewSet):
         if invitation.guest and invitation.guest.phone_number:
             self.send_invitation([invitation.guest.phone_number], download_url)
         return response
+
+
+class GuestAPIVIEW(ListAPIView):
+    queryset = Invitation.objects.all()
+    serializer_class = GuestCountSerializer
+
+    def get(self, request, *args, **kwargs):
+        guest_arrived = Invitation.objects.filter(scanned=True).count()
+        guest_invited = Invitation.objects.all().count()
+
+        data = {
+            "number_of_guest_arrived": guest_arrived,
+            "number_of_guest_invited": guest_invited,
+        }
+
+        serializer = self.get_serializer(data)
+        return Response(serializer.data)

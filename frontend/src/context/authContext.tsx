@@ -11,6 +11,9 @@ const authContext = createContext<AuthContextType>({
     },
     setAuthUser: () => {
     },
+    loading: false,
+    setLoading: () => {
+    },
 })
 
 export default authContext;

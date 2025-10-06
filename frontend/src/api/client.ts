@@ -2,7 +2,7 @@ import Axios from "axios";
 
 
 const apiClient = Axios.create({
-    baseURL: "https://trickshot.tech/",
+    baseURL: "http://127.0.0.1:8000/api/",
 });
 
 apiClient.interceptors.request.use((config) => {

@@ -1,7 +1,7 @@
 import {Box, TextField, Button, Alert, Link} from "@mui/material";
 import type {AxiosError} from "axios";
 import * as React from "react";
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import guestApi from "../api/guest.ts";
 import SubButtonHeader from "../components/SubButtonHeader.tsx";
 import Header from "../components/Header.tsx";
@@ -17,15 +17,16 @@ const AddGuest = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({...formData, [e.target.name]: e.target.value});
     };
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
+
         try {
             const response = await guestApi.addGuest(formData.name, formData.phoneNumber);
+
             if (response.statusText.toLowerCase() === "ok") {
-                setLoginFailed(false);
                 setSuccess(true);
+                setFormData({name: "", phoneNumber: ""});
             } else {
                 setLoginFailed(true);
                 setSuccess(false);
@@ -36,9 +37,20 @@ const AddGuest = () => {
             setLoginFailed(true);
             setSuccess(false);
         } finally {
-            setLoading(false); // always stop loading
+            setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (success) {
+            const timer = setTimeout(() => setSuccess(false), 3000);
+            return () => clearTimeout(timer);
+        }
+        if (loginFailed) {
+            const timer = setTimeout(() => setLoginFailed(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [success, loginFailed]);
 
     return (
         <Box sx={{
@@ -50,7 +62,7 @@ const AddGuest = () => {
             alignItems: "center",
             flexDirection: "column",
 
-        }}>{(loginFailed || success) && (
+        }}> {(loginFailed || success) && (
             <Alert
                 sx={{marginTop: 10, width: "85%"}}
                 severity={loginFailed ? "error" : "success"}
@@ -139,7 +151,7 @@ const AddGuest = () => {
                 <Button variant="contained" type={"submit"} loading={loading} sx={{
                     marginTop: 10,
                     height: "10%",
-                    backgroundColor: 'green'
+                    backgroundColor: '#6F00FF'
                 }}>submit</Button>
             </Box>
         </Box>

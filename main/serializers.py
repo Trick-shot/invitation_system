@@ -58,3 +58,8 @@ class GuestSerializer(ModelSerializer):
     class Meta:
         model = Guest
         fields = ["id", "name", "phone_number"]
+
+
+class GuestCountSerializer(serializers.Serializer):
+    number_of_guest_arrived = serializers.IntegerField()
+    number_of_guest_invited = serializers.IntegerField()

@@ -27,7 +27,7 @@ const paginationModel = {page: 0, pageSize: 10};
 
 const GuestTable = ({rows}: GuestTableProps) => {
     return (
-        <Paper sx={{height: 400, width: '90%', marginTop: 5}}>
+        <Paper sx={{height: 600, width: '90%', marginTop: 5}}>
             <DataGrid
                 rows={rows}
                 columns={columns}
