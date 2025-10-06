@@ -1,8 +1,8 @@
 import {Box, Button, Link} from "@mui/material";
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 import {useNavigate} from "react-router";
-import apiClient from "../api/client.ts";
-import GuestTable from "../components/GuestTable.tsx";
+// import apiClient from "../api/client.ts";
+// import GuestTable from "../components/GuestTable.tsx";
 import SubButtonHeader from "../components/SubButtonHeader.tsx";
 
 interface Guest {
@@ -15,30 +15,30 @@ import Header from "../components/Header.tsx";
 
 
 const Guest = () => {
-    const [guests, setGuests] = useState<Guest[]>([]);
+    // const [guests, setGuests] = useState<Guest[]>([]);
     // const [setLoading] = useState(true);
     const navigate = useNavigate();
 
 
-    const getGuests = async (): Promise<Guest[]> => {
-        const response = await apiClient.get("/main/invitations/");
-        // Map phoneNumber to number
-        return response.data.map((guest: {
-            id: number,
-            guest_name: "string",
-            phone_number: "string"
-        }) => ({
-            id: guest.id,
-            name: guest.guest_name,
-            phoneNumber: guest.phone_number,
-        }));
-    };
+    // const getGuests = async (): Promise<Guest[]> => {
+    //     const response = await apiClient.get("/main/invitations/");
+    //     // Map phoneNumber to number
+    //     return response.data.map((guest: {
+    //         id: number,
+    //         guest_name: "string",
+    //         phone_number: "string"
+    //     }) => ({
+    //         id: guest.id,
+    //         name: guest.guest_name,
+    //         phoneNumber: guest.phone_number,
+    //     }));
+    // };
 
     useEffect(() => {
         const fetchGuests = async () => {
             try {
-                const data = await getGuests();
-                setGuests(data);
+                // const data = await getGuests();
+                // setGuests(data);
             } catch (error) {
                 console.error("Failed to fetch guests", error);
             } finally {
@@ -71,7 +71,7 @@ const Guest = () => {
                     guests
                 </Link>
             </SubButtonHeader>
-            <GuestTable rows={guests}/>
+            {/*<GuestTable rows={guests}/>*/}
         </Box>
     );
 }

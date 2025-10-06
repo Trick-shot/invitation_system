@@ -3,7 +3,7 @@ import {Route, Routes} from "react-router"
 import AuthContext from "./context/authContext.tsx";
 import Login from "./pages/Login.tsx";
 import type {UserType} from "./types/UserType.ts";
-import ProtectedRouter from "./utils/ProtectedRouter.tsx";
+// import ProtectedRouter from "./utils/ProtectedRouter.tsx";
 
 
 import Dashboard from "./pages/Dashboard.tsx";
@@ -16,11 +16,11 @@ function App() {
         <AuthContext value={{authUser, setAuthUser}}>
             <Routes>
                 <Route index element={<Login/>} path="login"/>
-                <Route path="/" element={<ProtectedRouter navigateTo="login"/>}>
-                    <Route element={<Dashboard/>} path="dashboard"/>
-                    <Route element={<Guest/>} path="guests"/>
-                    <Route element={<AddGuest/>} path="addGuests"/>
-                </Route>
+                {/*<Route path="/" element={<ProtectedRouter navigateTo="login"/>}>*/}
+                <Route element={<Dashboard/>} path="dashboard"/>
+                <Route element={<Guest/>} path="guests"/>
+                <Route element={<AddGuest/>} path="addGuests"/>
+                {/*</Route>*/}
             </Routes>
         </AuthContext>
     );

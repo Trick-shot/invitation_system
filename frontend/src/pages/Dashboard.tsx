@@ -6,7 +6,7 @@ import Header from "../components/Header.tsx";
 import {Camera} from "react-camera-pro";
 import {useState} from "react";
 import Card from "../components/Card.tsx";
-
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -47,8 +47,9 @@ const Dashboard = () => {
             <Card color={"#6AB473"}/>
             <Card color={"#8B6AB4"}/>
             <Button
+                startIcon={<QrCodeScannerIcon/>}
                 variant="contained"
-                sx={{width: "86%", height: "7%", marginTop: "50%"}}
+                sx={{width: "86%", height: "7%", marginTop: "50%", fontSize: 15}}
                 onClick={() => setCameraOn((prev) => !prev)}
             >
                 {cameraOn ? "Close Camera" : "SCAN QR"}

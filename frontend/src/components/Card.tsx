@@ -32,7 +32,7 @@ const Card = ({color}: { color: string }) => {
             <Stack width="100%" height="100%" paddingLeft={4} paddingTop={4}>
                 <Typography>Number of Guest arrived</Typography>
                 <Stack flexDirection={"row"} width="100%" justifyContent={"space-between"}>
-                    <Typography fontSize={40}>100</Typography>
+                    <Typography fontSize={40}>0</Typography>
                     <Typography fontSize={15} marginTop={4} marginRight={2}>Guests</Typography>
                 </Stack>
             </Stack>
