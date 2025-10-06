@@ -13,14 +13,26 @@ class InvitationSerializer(ModelSerializer):
 
     def create(self, validated_data):
         guest_data = validated_data.pop("guest")
-        existing_guest = Guest.objects.filter(phone_number=guest_data["phone_number"]).first()
 
+        # Normalize phone number
+        phone_number = guest_data["phone_number"]
+        phone_number = str(phone_number).strip()  # remove spaces
+
+        # If it starts with 0, replace with +255
+        if phone_number.startswith("0"):
+            phone_number = "+255" + phone_number[1:]
+        elif not phone_number.startswith("+"):
+            phone_number = "+" + phone_number  # fallback, ensure it starts with +
+
+        # Check for existing guest
+        existing_guest = Guest.objects.filter(phone_number=phone_number).first()
         if existing_guest:
             raise serializers.ValidationError({"phone": "Guest with this phone number already invited"})
 
+        # Create guest
         guest = Guest.objects.create(
             name=guest_data["name"],
-            phone_number=guest_data["phone_number"]
+            phone_number=phone_number
         )
 
         invitation = Invitation.objects.create(guest=guest, **validated_data)

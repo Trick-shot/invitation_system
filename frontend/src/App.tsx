@@ -5,22 +5,18 @@ import Login from "./pages/Login.tsx";
 import type {UserType} from "./types/UserType.ts";
 import ProtectedRouter from "./utils/ProtectedRouter.tsx";
 
+
 import Dashboard from "./pages/Dashboard.tsx";
 import Guest from "./pages/Guest.tsx";
 import AddGuest from "./pages/AddGuest.tsx";
 
 function App() {
-    const [authUser, setAuthUser] = useState<UserType>({
-        userId: 0,
-        email: "",
-        firstName: "",
-        lastName: "",
-    });
+    const [authUser, setAuthUser] = useState<UserType>({email: "", firstName: "", lastName: "", userId: 0});
     return (
         <AuthContext value={{authUser, setAuthUser}}>
             <Routes>
                 <Route index element={<Login/>} path="login"/>
-                <Route path="/" element={<ProtectedRouter navigateTo="login" user={authUser}/>}>
+                <Route path="/" element={<ProtectedRouter navigateTo="login"/>}>
                     <Route element={<Dashboard/>} path="dashboard"/>
                     <Route element={<Guest/>} path="guests"/>
                     <Route element={<AddGuest/>} path="addGuests"/>

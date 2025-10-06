@@ -1,28 +1,26 @@
-import {Box, Breadcrumbs, Button, Typography, Stack} from "@mui/material";
+import {Box, Breadcrumbs, Stack} from "@mui/material";
+import {type ReactElement, type ReactNode} from "react";
+
 
 interface SubButtonHeaderInterface {
-    onClick: () => void;
-    buttonText: string
+    button?: ReactElement;
+    children: ReactNode;
 }
 
-const SubButtonHeader = ({onClick, buttonText}: SubButtonHeaderInterface) => {
+const SubButtonHeader = ({button, children}: SubButtonHeaderInterface) => {
     return (
-        <Box sx={{
-            marginTop: "20%",
-            width: "86%"
-        }}>
+        <Box sx={{marginTop: "20%", width: "86%"}}>
+
+
             <Stack width="100%" flexDirection="row" justifyContent="flex-end">
-                <Button variant="contained" onClick={onClick} sx={{
-                    width: "40%"
-                }}>{buttonText}</Button>
+                {button}
             </Stack>
-            <Breadcrumbs color="#fff" sx={{
-                marginTop: 2
-            }}>
-                <Typography sx={{color: '#fff', fontSize: 16}}>Home</Typography>
-                <Typography sx={{color: '#fff', fontSize: 16}}>Breadcrumbs</Typography>
+
+            <Breadcrumbs color="#fff" sx={{marginTop: 2}}>
+                {children}
             </Breadcrumbs>
         </Box>
-    )
-}
+    );
+};
+
 export default SubButtonHeader;

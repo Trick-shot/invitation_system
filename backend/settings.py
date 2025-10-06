@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-SITE_URL = config('SITE_URL')
+SITE_URL = "https://trickshot.tech"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
@@ -57,12 +57,13 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CSRF_COOKIE_HTTPONLY = False   # let JS read it
-CSRF_COOKIE_SECURE = False      # only over HTTPS
+CSRF_COOKIE_HTTPONLY = False  # let JS read it
+CSRF_COOKIE_SECURE = False  # only over HTTPS
 
 CORS_ALLOWED_ORIGINS = [
     "https://trickshot.tech",
-    "https://www.trickshot.tech"
+    "https://www.trickshot.tech",
+    'http://localhost:5173'
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://trickshot.tech",
