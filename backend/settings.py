@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-SITE_URL = config('SITE_URL')
+SITE_URL = "https://trickshot.tech"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
@@ -58,6 +58,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+DEFAULT_CHARSET = 'utf-8'
+
 
 CSRF_COOKIE_HTTPONLY = False  # let JS read it
 # CSRF_COOKIE_SECURE = True     # only over HTTPS

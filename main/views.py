@@ -77,11 +77,8 @@ class InvitationViewSet(ModelViewSet):
     def send_invitation(self, recipients, card_link):
         africastalking.initialize(settings.AFRICASTALKING_USERNAME, settings.AFRICASTALKING_API_KEY)
         message = (
-            "Kwa mioyo iliyojaa furaha na shukrani, familia ya Bw & Bibi Moses Nyoni "
-            "inakualika katika tafrija ya adhimisho la Sakramenti ya komunio ya kwanza "
-            "ya watoto wao wapendwa, Edin Kanduta na Edinson Kahangulila."
-            "Zingatia: Mwaliko huu ni kwa mtu mmoja pekee. Bofya hapa kupata kadi ya mwaliko."
-            f"{"  " + card_link}"
+            "Kwa mioyo iliyojaa furaha na shukrani, familia ya Bw & Bibi Moses Nyoni inakualika katika tafrija ya adhimisho la Sakramenti ya komunio ya kwanza ya watoto wao wapendwa, Edin Kanduta na Edinson Kahangulila.Zingatia: Watoto hawaruhusiwi. Bofya hapa kupata kadi ya mwaliko \n"
+            + card_link
         )
 
         # Sending on SMS
@@ -90,7 +87,7 @@ class InvitationViewSet(ModelViewSet):
         wa_number = "+255684581734"
 
         # Send SMS to all recipients
-        response_sms = sms.send(message.encode("utf-8"), recipients)
+        response_sms = sms.send(message, recipients)
 
         # # Send WhatsApp individually
         # for recipient in recipients:

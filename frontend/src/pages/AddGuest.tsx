@@ -19,12 +19,31 @@ const AddGuest = () => {
     };
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        // ✅ Basic validation
+        if (!formData.name.trim() || !formData.phoneNumber.trim()) {
+            setLoginFailed(true);
+            setSuccess(false);
+            console.log("Please fill in all fields.");
+            return; // ⛔ stop here — don’t send to backend
+        }
+
+        // Optional: Add simple phone number validation
+        const phoneRegex = /^[0-9]{10,15}$/; // adjust as needed
+        if (!phoneRegex.test(formData.phoneNumber)) {
+            setLoginFailed(true);
+            setSuccess(false);
+            console.log("Invalid phone number format.");
+            return; // ⛔ stop here too
+        }
+
         setLoading(true);
 
         try {
             const response = await guestApi.addGuest(formData.name, formData.phoneNumber);
+            console.log(response.data);
 
-            if (response.statusText.toLowerCase() === "ok") {
+            if (response.status === 200 || response.status === 201) {
                 setSuccess(true);
                 setFormData({name: "", phoneNumber: ""});
             } else {
