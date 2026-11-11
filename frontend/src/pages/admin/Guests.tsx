@@ -149,14 +149,18 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
             </Field>
             <div><Button variant="ink" loading={run.isPending} disabled={!text.trim()} onClick={() => run.mutate({ source: "paste", text })}>Check the list</Button></div>
           </>}
-          {source === "file" && (
+          {source === "file" && (<>
+            <div className="panel" style={{ padding: 12, background: "var(--bg-accent-subtle)", border: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 13 }}><b>Start from the template.</b> <span className="muted">Three columns: Name, Phone, Admits. Fill it in Excel or Google Sheets and upload it here.</span></span>
+              <TemplateDownload />
+            </div>
             <label className={`dropzone ${over ? "over" : ""}`} onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
               <b>Drop a spreadsheet, .csv or .vcf here, or click to browse</b>
               <div className="quiet" style={{ fontSize: 13, marginTop: 4 }}>Excel or Google Sheets export: a column for names, one for phone numbers, optionally one for how many people the card admits. Any column order; we read the headings. iPhone: Contacts, select people, Share, save the .vcf.</div>
               <input type="file" accept=".xlsx,.xlsm,.vcf,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/vcard,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
               {run.isPending && <div className="spinner" style={{ margin: "12px auto 0" }} />}
             </label>
-          )}
+          </>)}
         </div>
       ) : (
         <div className="panel" style={{ maxHeight: 420, overflow: "auto" }}>
@@ -177,4 +181,20 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
       )}
     </Modal>
   );
+}
+
+/** Fetches the .xlsx with the auth header (a plain <a href> would not carry the JWT) and triggers a download. */
+export function TemplateDownload({ label = "Download template" }: { label?: string }) {
+  const { slug, eventId } = useEvent();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const { tokens } = await import("../../api/client");
+      const res = await fetch(`${ev(slug, eventId)}/invitations/import/template/`, { headers: { Authorization: `Bearer ${tokens.access}` } });
+      const blob = await res.blob();
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "guest-list-template.xlsx"; a.click(); URL.revokeObjectURL(a.href);
+    } finally { setBusy(false); }
+  };
+  return <Button size="sm" variant="ink" loading={busy} onClick={run}>{label}</Button>;
 }

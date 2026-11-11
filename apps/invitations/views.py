@@ -67,6 +67,17 @@ class InvitationViewSet(WorkspaceViewSet):
         queue_card(invitation)
         return Response({"detail": "Card queued."})
 
+    @action(detail=False, methods=["get"], url_path="import/template")
+    def import_template(self, request, *args, **kwargs):
+        from django.http import HttpResponse
+
+        from .template_xlsx import build_template
+
+        data = build_template(self.workspace.default_country)
+        resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = 'attachment; filename="guest-list-template.xlsx"'
+        return resp
+
     @action(detail=False, methods=["post"], url_path="import/preview")
     def import_preview(self, request, *args, **kwargs):
         ser = ImportPreviewSerializer(data=request.data)

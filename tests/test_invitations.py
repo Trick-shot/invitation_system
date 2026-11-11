@@ -201,3 +201,12 @@ def test_import_preview_accepts_xlsx_upload(api_a, ws_a, event_a):
     f = SimpleUploadedFile("guests.xlsx", buf.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     r = api_a.post(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/preview/", {"source": "csv", "file": f}, format="multipart")
     assert r.status_code == 200 and r.data["rows"][0]["phone"] == "+255713909544" and r.data["counts"]["ready"] == 1
+
+
+def test_template_download_round_trips_through_the_importer(api_a, ws_a, event_a):
+    from apps.invitations.importers import parse_xlsx
+
+    r = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/template/")
+    assert r.status_code == 200 and r["Content-Disposition"].endswith('guest-list-template.xlsx"')
+    rows = list(parse_xlsx(r.content))
+    assert rows == [("Amina Hassan", "0712 345 678", 1), ("Joseph Mwita", "+255 755 111 222", 2)]

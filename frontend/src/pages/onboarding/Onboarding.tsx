@@ -10,7 +10,7 @@ import { api, ApiError, ev, ws } from "../../api/client";
 import type { Event, EventKind, Invitation, Paginated, SendProgress, WorkspaceSettings } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
 import { Button, Chevron, Chip, Field, Illustration, Input, useToast } from "../../components/ui";
-import { ImportModal } from "../admin/Guests";
+import { ImportModal, TemplateDownload } from "../admin/Guests";
 import Message from "../admin/Message";
 import Template from "../admin/Template";
 import { useWorkspace } from "../admin/Shell";
@@ -114,6 +114,7 @@ function Step5({ onDone, back, later }: { onDone: () => void; back: () => void; 
       <div className="ob-grid three">
         {routes.map(([ill, t, d]) => <button key={t} type="button" className="choice" onClick={() => setImporting(true)}><div className="top"><Illustration name={ill} size={84} /></div><span className="title">{t}</span><span className="desc">{d}</span></button>)}
       </div>
+      <div className="row" style={{ width: "100%", justifyContent: "center", gap: 10, fontSize: 13 }}><span className="muted">Have a list in Excel? Fill in the template and upload it.</span><TemplateDownload /></div>
       {count > 0 && (
         <div className="panel" style={{ width: "100%" }}>
           {list.data!.results.map((g, i) => <div key={g.id} className="row" style={{ padding: "10px 16px", borderTop: i ? "1px solid var(--border-subtle)" : 0, justifyContent: "space-between" }}><span>{g.name}</span><span className="mono muted">{g.phone_display}</span><span className="muted">Admits {g.capacity}</span><span style={{ color: "var(--success-text)", fontWeight: 500 }}>Ready</span></div>)}
