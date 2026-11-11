@@ -104,12 +104,13 @@ fi
 
 say "Python"
 sudo -u "$APP_USER" -H bash -c "cd $APP_DIR && [ -d .venv ] || python3 -m venv .venv"
-sudo -u "$APP_USER" -H bash -c "cd $APP_DIR && .venv/bin/pip install -q --upgrade pip && .venv/bin/pip install -q -r requirements.txt"
+# www-data's home (/var/www) is usually root-owned, so npm and pip get caches inside the app dir.
+sudo -u "$APP_USER" -H bash -c "export PIP_CACHE_DIR=$APP_DIR/.cache/pip; cd $APP_DIR && .venv/bin/pip install -q --upgrade pip && .venv/bin/pip install -q -r requirements.txt"
 sudo -u "$APP_USER" -H bash -c "cd $APP_DIR && .venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput"
 mkdir -p "$APP_DIR/media" && chown -R "$APP_USER:$APP_USER" "$APP_DIR/media"
 
 say "Frontend build"
-sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX}\$PATH; cd $APP_DIR/frontend && npm ci --silent --no-audit --no-fund && npm run build --silent"
+sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX}\$PATH npm_config_cache=$APP_DIR/.cache/npm; cd $APP_DIR/frontend && npm ci --silent --no-audit --no-fund && npm run build --silent"
 
 say "Services"
 sed "s#/srv/invitations#${APP_DIR}#g" "$APP_DIR/deploy/gunicorn.service" > /etc/systemd/system/invitations.service
