@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { MessageTemplate } from "../../api/types";
-import { Button, Chip, Field, useToast } from "../../components/ui";
+import { Button, Field, useToast } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 
 export default function Message() {
@@ -12,23 +12,22 @@ export default function Message() {
   const toast = useToast();
   const q = useQuery({ queryKey: ["message", slug, eventId], queryFn: () => api<MessageTemplate>(`${ev(slug, eventId)}/message/`) });
   const [body, setBody] = useState("");
-  const [lang, setLang] = useState("sw");
+  
   const [err, setErr] = useState("");
   const ta = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (q.data) { setBody(q.data.body); setLang(q.data.language); } }, [q.data]);
+  useEffect(() => { if (q.data) { setBody(q.data.body); } }, [q.data]);
   const save = useMutation({
-    mutationFn: () => api<MessageTemplate>(`${ev(slug, eventId)}/message/`, { method: "PUT", body: { body, language: lang, channel: "sms" } }),
+    mutationFn: () => api<MessageTemplate>(`${ev(slug, eventId)}/message/`, { method: "PUT", body: { body, language: "en", channel: "sms" } }),
     onSuccess: () => { setErr(""); q.refetch(); refetch(); toast("Message saved"); nav(`/app/${slug}/events/${eventId}`); },
     onError: (e) => setErr((e as ApiError).field("body") ?? (e as ApiError).summary),
   });
   const insert = (tok: string) => { const el = ta.current; if (!el) return setBody(body + tok); const s = el.selectionStart, e = el.selectionEnd; setBody(body.slice(0, s) + tok + body.slice(e)); requestAnimationFrame(() => { el.focus(); el.setSelectionRange(s + tok.length, s + tok.length); }); };
-  const seg = segments(body.replace("{name}", "Amina Hassan").replace("{link}", "https://trickshot.tech/i/x7k2mq9f").replace("{event}", "Komunio ya Kwanza"));
-  const preview = body.replace("{name}", "Amina").replace("{link}", "trickshot.tech/i/x7k2mq9f").replace("{event}", "Komunio ya Kwanza");
+  const seg = segments(body.replace("{name}", "Amina Hassan").replace("{link}", "https://trickshot.tech/i/x7k2mq9f").replace("{event}", "Moses Nyoni Communion"));
+  const preview = body.replace("{name}", "Amina").replace("{link}", "trickshot.tech/i/x7k2mq9f").replace("{event}", "Moses Nyoni Communion");
   return (
     <div className="split" style={{ gridTemplateColumns: "1fr 300px" }}>
       <div className="stack" style={{ gap: 16 }}>
         <div><h3>What will guests receive?</h3><p className="muted">We started you off based on the kind of event. Change any of it.</p></div>
-        <div className="row" style={{ gap: 8 }}><span className="muted" style={{ fontWeight: 500, fontSize: 13 }}>Language</span><Chip on={lang === "sw"} onClick={() => setLang("sw")}>Kiswahili</Chip><Chip on={lang === "en"} onClick={() => setLang("en")}>English</Chip></div>
         <Field error={err}><textarea ref={ta} className="input" rows={7} value={body} onChange={(e) => setBody(e.target.value)} style={{ borderColor: "var(--border-accent)", fontSize: 15 }} /></Field>
         <div className="row" style={{ gap: 8 }}><span className="muted" style={{ fontWeight: 500, fontSize: 13 }}>Insert</span>{["{name}", "{link}", "{event}"].map((t) => <button key={t} type="button" className="kbd mono" style={{ fontSize: 12, padding: "3px 8px", cursor: "pointer", color: "var(--text-accent)" }} onClick={() => insert(t)}>{t}</button>)}</div>
         <div><b>{seg.characters} characters, {seg.segments} SMS per guest</b><div className="quiet" style={{ fontSize: 13 }}>{seg.encoding === "UCS-2" ? "A curly quote or emoji dropped the limit to 70 characters per SMS. Remove it to halve your cost." : seg.characters > 160 ? "Keeping it under 160 would halve your cost." : "Fits in one SMS."}</div></div>

@@ -56,7 +56,7 @@ function Step1({ onDone, later }: { onDone: (id: number) => void; later: () => v
   const [form, setForm] = useState({ name: "", date: "", venue: "" });
   const [err, setErr] = useState<ApiError | null>(null);
   const m = useMutation({ mutationFn: () => api<Event>(`${ws(slug)}/events/`, { method: "POST", body: { ...form, kind } }), onSuccess: (e) => onDone(e.id), onError: (e) => setErr(e as ApiError) });
-  const kinds: [EventKind, string, string, string][] = [["wedding", "Wedding", "Harusi. A formal card with the couple's names.", "wedding-envelope"], ["communion", "First communion", "Komunio ya kwanza. Family and church friends.", "church"], ["graduation", "Graduation", "Mahafali. Often two or three people per card.", "graduation"], ["other", "Something else", "You write the message yourself.", "note-pencil"]];
+  const kinds: [EventKind, string, string, string][] = [["wedding", "Wedding", "A formal card with the couple's names.", "wedding-envelope"], ["communion", "First communion", "Family and church friends. Often several per card.", "church"], ["graduation", "Graduation", "Often two or three people per card.", "graduation"], ["other", "Something else", "You write the message yourself.", "note-pencil"]];
   return (
     <Card step="Step 1 of 6" title={<>What kind of event<br />is this?</>} sub="This sets the starting text of your invitation message. You can change every word of it later." next="Continue" onNext={() => m.mutate()} nextDisabled={!form.name || !form.date} nextLoading={m.isPending} later={later}>
       <div className="ob-grid">

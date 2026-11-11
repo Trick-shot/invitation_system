@@ -102,7 +102,7 @@ def png_bytes(w=600, h=900, color=(250, 248, 244)):
     return buf
 
 
-def make_event(ws, name="Komunio ya Kwanza", status=Event.Status.OPEN, with_template=True, with_message=True):
+def make_event(ws, name="Moses Nyoni Communion", status=Event.Status.OPEN, with_template=True, with_message=True):
     with workspace_context(ws):
         ev = Event.objects.create(
             workspace=ws, name=name, kind="communion", date=dt.date(2026, 12, 14), venue="Mbagala Parish Hall", status=status
@@ -114,7 +114,7 @@ def make_event(ws, name="Komunio ya Kwanza", status=Event.Status.OPEN, with_temp
             t.image.save("template.png", ContentFile(png_bytes().read()), save=False)
             t.save()
         if with_message:
-            MessageTemplate.objects.create(workspace=ws, event=ev, body="Karibu {name}. Kadi yako: {link}")
+            MessageTemplate.objects.create(workspace=ws, event=ev, body="Welcome {name}. Your card: {link}")
         return ev
 
 

@@ -19,7 +19,7 @@ class Workspace(models.Model):
     logo = models.ImageField(upload_to="workspaces/logos/", blank=True)
     timezone = models.CharField(max_length=64, default="Africa/Dar_es_Salaam")
     default_country = models.CharField(max_length=2, default="TZ", help_text="ISO 3166 alpha-2, used to normalise phone numbers")
-    default_language = models.CharField(max_length=8, default="sw")
+    default_language = models.CharField(max_length=8, default="en")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
 

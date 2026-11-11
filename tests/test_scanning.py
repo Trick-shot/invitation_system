@@ -75,7 +75,7 @@ def test_manual_admit_by_name_is_flagged(staff_a, ws_a, event_a, inv_a):
 
 def test_scan_events_lists_only_my_workspaces(staff_a, event_a, event_b):
     r = client_for(staff_a).get("/api/scan/events/")
-    assert [e["name"] for e in r.data] == ["Komunio ya Kwanza"]
+    assert [e["name"] for e in r.data] == ["Moses Nyoni Communion"]
 
 
 def test_scan_log_endpoint_for_admin(api_a, staff_a, ws_a, event_a, inv_a):

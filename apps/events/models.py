@@ -81,7 +81,7 @@ class MessageTemplate(WorkspaceOwnedModel):
 
     event = models.OneToOneField(Event, on_delete=models.CASCADE, related_name="message")
     channel = models.CharField(max_length=10, choices=Channel.choices, default=Channel.SMS)
-    language = models.CharField(max_length=8, default="sw")
+    language = models.CharField(max_length=8, default="en")
     body = models.TextField()
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -92,12 +92,8 @@ class MessageTemplate(WorkspaceOwnedModel):
 
 
 DEFAULT_MESSAGES = {
-    ("wedding", "sw"): "Kwa furaha kubwa, tunakualika {name} kwenye harusi yetu. Bofya hapa kupata kadi yako ya mwaliko: {link}",
-    ("communion", "sw"): "Kwa mioyo iliyojaa furaha, tunakualika {name} katika tafrija ya komunio ya kwanza. Kadi yako ya mwaliko: {link}",
-    ("graduation", "sw"): "Tunakualika {name} kwenye mahafali yetu. Kadi yako ya mwaliko: {link}",
-    ("other", "sw"): "Tunakualika {name} kwenye {event}. Kadi yako ya mwaliko: {link}",
-    ("wedding", "en"): "With great joy we invite you, {name}, to our wedding. Your invitation card: {link}",
-    ("communion", "en"): "We would be honoured to have you, {name}, at the first communion. Your invitation card: {link}",
-    ("graduation", "en"): "You are invited, {name}, to our graduation. Your invitation card: {link}",
-    ("other", "en"): "You are invited, {name}, to {event}. Your invitation card: {link}",
+    "wedding": "With great joy we invite you, {name}, to our wedding. Your invitation card: {link}",
+    "communion": "We would be honoured to have you, {name}, at the first communion. Your invitation card: {link}",
+    "graduation": "You are invited, {name}, to our graduation. Your invitation card: {link}",
+    "other": "You are invited, {name}, to {event}. Your invitation card: {link}",
 }

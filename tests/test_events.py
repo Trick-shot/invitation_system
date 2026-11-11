@@ -9,11 +9,11 @@ pytestmark = pytest.mark.django_db
 
 
 def test_create_event_seeds_message_in_workspace_language(api_a, ws_a):
-    r = api_a.post(f"/api/workspaces/{ws_a.slug}/events/", {"name": "Harusi", "kind": "wedding", "date": "2027-03-06", "venue": "Kunduchi"})
+    r = api_a.post(f"/api/workspaces/{ws_a.slug}/events/", {"name": "Kimaro Wedding", "kind": "wedding", "date": "2027-03-06", "venue": "Kunduchi"})
     assert r.status_code == 201
     with workspace_context(ws_a):
         msg = MessageTemplate.objects.get(event_id=r.data["id"])
-    assert "{link}" in msg.body and msg.language == "sw"
+    assert "{link}" in msg.body and msg.language == "en"
 
 
 def test_template_upload_and_slot_pixels(api_a, ws_a):
@@ -41,9 +41,9 @@ def test_slot_is_clamped_inside_image(ws_a, event_a):
 def test_message_requires_link_and_reports_segments(api_a, ws_a, event_a):
     url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/message/"
     assert api_a.put(url, {"body": "no link here"}).status_code == 400
-    r = api_a.put(url, {"body": "Karibu {name}. " + "x" * 150 + " {link}"})
+    r = api_a.put(url, {"body": "Welcome {name}. " + "x" * 150 + " {link}"})
     assert r.status_code == 200 and r.data["segments"]["segments"] == 2 and r.data["segments"]["encoding"] == "GSM-7"
-    r = api_a.put(url, {"body": "Karibu {name} 🎉 {link}"})
+    r = api_a.put(url, {"body": "Welcome {name} 🎉 {link}"})
     assert r.data["segments"]["encoding"] == "UCS-2"
 
 

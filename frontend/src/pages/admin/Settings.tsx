@@ -11,7 +11,7 @@ export default function Settings() {
   const { refresh } = useAuth();
   const toast = useToast();
   const q = useQuery({ queryKey: ["settings", slug], queryFn: () => api<WorkspaceSettings>(`${ws(slug)}/settings/`), enabled: role === "admin" });
-  const [form, setForm] = useState({ name: "", default_country: "TZ", default_language: "sw", timezone: "Africa/Dar_es_Salaam" });
+  const [form, setForm] = useState({ name: "", default_country: "TZ", default_language: "en", timezone: "Africa/Dar_es_Salaam" });
   const [cred, setCred] = useState({ sender_id: "", api_key: "", secret_key: "" });
   const [credOpen, setCredOpen] = useState(false);
   const [err, setErr] = useState<ApiError | null>(null);
@@ -33,7 +33,6 @@ export default function Settings() {
           <Field label="Name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <div className="row" style={{ alignItems: "flex-start" }}>
             <Field label="Country" hint="Used to read numbers like 0712 345 678 correctly."><select className="input" value={form.default_country} onChange={(e) => setForm({ ...form, default_country: e.target.value })}>{[["TZ", "Tanzania"], ["KE", "Kenya"], ["UG", "Uganda"], ["RW", "Rwanda"], ["ZM", "Zambia"], ["MW", "Malawi"]].map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select></Field>
-            <Field label="Default language" hint="Starting language for new event messages."><select className="input" value={form.default_language} onChange={(e) => setForm({ ...form, default_language: e.target.value })}><option value="sw">Kiswahili</option><option value="en">English</option></select></Field>
           </div>
           <Field label="Logo" optional><div className="row">{q.data?.logo && <img src={q.data.logo} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />}<label className="btn btn-secondary">Upload<input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && logo.mutate(e.target.files[0])} /></label></div></Field>
           <div><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Save</Button></div>

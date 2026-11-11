@@ -37,9 +37,8 @@ class EventViewSet(WorkspaceViewSet):
     def perform_create(self, serializer):
         event = serializer.save(workspace=self.workspace)
         # A starter message so step 4 of onboarding is never a blank box.
-        lang = self.workspace.default_language if self.workspace.default_language in ("sw", "en") else "sw"
-        body = DEFAULT_MESSAGES.get((event.kind, lang)) or DEFAULT_MESSAGES[("other", lang)]
-        MessageTemplate.objects.create(workspace=self.workspace, event=event, language=lang, body=body)
+        body = DEFAULT_MESSAGES.get(event.kind) or DEFAULT_MESSAGES["other"]
+        MessageTemplate.objects.create(workspace=self.workspace, event=event, language="en", body=body)
 
     @action(detail=True, methods=["get"])
     def dashboard(self, request, *args, **kwargs):
