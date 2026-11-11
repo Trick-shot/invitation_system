@@ -23,7 +23,10 @@ def no_ssl_redirect(settings):
 def run_on_commit_now(monkeypatch, settings):
     """Tests run inside a transaction, so on_commit hooks would never fire. Run them inline."""
     monkeypatch.setattr(transaction, "on_commit", lambda fn, using=None, robust=False: fn())
-    settings.Q_CLUSTER = {**settings.Q_CLUSTER, "sync": True}
+    # django-q reads Q_CLUSTER into Conf at import time, so patch Conf itself, not settings.
+    from django_q.conf import Conf
+
+    monkeypatch.setattr(Conf, "SYNC", True)
     settings.MESSAGING = {**settings.MESSAGING, "DEFAULT_PROVIDER": "console"}
     settings.MEDIA_ROOT = "/tmp/invitation-test-media"
     settings.FIELD_ENCRYPTION_KEY = "u4lhUeeUbJPtXwMo2OT2U8H8tVxH2A1nZpM1nQ0tXGk="
