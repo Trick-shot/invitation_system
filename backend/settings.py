@@ -157,7 +157,7 @@ MESSAGING = {
     "DEFAULT_PROVIDER": config("MESSAGING_PROVIDER", default="console"),  # console | beem
     "BEEM_API_KEY": config("BEEM_API_KEY", default=""),
     "BEEM_SECRET_KEY": config("BEEM_SECRET_KEY", default=""),
-    "BEEM_SENDER_ID": config("BEEM_SENDER_ID", default="INFO"),
+    "BEEM_SENDER_ID": config("BEEM_SENDER_ID", default=""),  # must be an active sender name on the Beem account; "INFO" is retired
     "BEEM_SEND_URL": config("BEEM_SEND_URL", default="https://apisms.beem.africa/v1/send"),
 }
 
