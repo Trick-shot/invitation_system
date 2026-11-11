@@ -1,0 +1,10 @@
+.auth-canvas { min-height: 100%; display: grid; place-items: center; padding: 24px; position: relative; overflow: hidden; background: var(--bg-canvas); }
+.auth-wrap { position: relative; width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; }
+.auth-card { position: relative; z-index: 1; width: 100%; background: var(--bg-surface); border-radius: var(--r-xl); padding: 40px 32px; box-shadow: var(--shadow-float); display: flex; flex-direction: column; gap: 24px; }
+.auth-card h1 { font-size: 32px; line-height: 1.2; }
+.auth-card form { display: flex; flex-direction: column; gap: 24px; }
+.auth-card .links { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; font-weight: 500; }
+.auth-card .links a { color: var(--text-accent); }
+.blob { width: 260px; height: 260px; pointer-events: none; mix-blend-mode: multiply; margin-bottom: 0; }
+.blob.hidden { display: none; }
+@media (max-height: 760px) { .blob { width: 180px; height: 180px; } }

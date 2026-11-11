@@ -1,0 +1,16 @@
+Django>=5.2,<5.3
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.4
+django-cors-headers>=4.6
+django-q2>=1.7
+python-decouple>=3.8
+PyMySQL>=1.1
+Pillow>=11
+segno>=1.6
+phonenumbers>=8.13
+vobject>=0.9.7
+cryptography>=43
+requests>=2.32
+gunicorn>=23
+whitenoise>=6.8
+openpyxl>=3.1

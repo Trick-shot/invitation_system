@@ -1,0 +1,14 @@
+[Unit]
+Description=Invitation platform (gunicorn)
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/invitations
+EnvironmentFile=/srv/invitations/.env
+ExecStart=/srv/invitations/.venv/bin/gunicorn backend.wsgi:application --workers 3 --bind unix:/run/invitations.sock --timeout 60
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+line-length = 140
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "DJ"]
+ignore = ["E501", "B904", "B008"]
+
+[lint.per-file-ignores]
+"*/migrations/*" = ["ALL"]
+"tests/*" = ["B011"]
