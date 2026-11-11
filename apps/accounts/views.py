@@ -98,7 +98,7 @@ class ForgotPasswordView(APIView):
         membership = user.memberships.filter(workspace__status="active").order_by("id").first() if user else None
         if membership:
             invite = MemberInvite.objects.create(user=user, workspace=membership.workspace, expires_at=timezone.now() + INVITE_TTL)
-            deliver_invite(invite)
+            deliver_invite(invite, kind="reset")
         return Response({"detail": "If that email has an account, a link to set a new password is on its way."})
 
 

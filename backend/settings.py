@@ -171,7 +171,7 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
 EMAIL_TIMEOUT = 15
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="invitations@trickshot.tech")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Trickshot Invitations <hello@trickshot.tech>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 if not DEBUG:

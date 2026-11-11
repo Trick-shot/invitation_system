@@ -1,0 +1,27 @@
+{% autoescape on %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:0;background:#f2f2f0;">
+<span style="display:none;max-height:0;overflow:hidden;color:#f2f2f0;">{{ preheader }}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f0;">
+<tr><td align="center" style="padding:40px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+  <tr><td style="padding:0 0 20px 4px;font-family:Poppins,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#16130f;">
+    <img src="{{ site_url }}/email-mark.png" width="28" height="28" alt="" style="vertical-align:middle;border:0;border-radius:8px;margin-right:10px;">Trickshot Invitations
+  </td></tr>
+  <tr><td style="background:#ffffff;border:1px solid #e4e4e1;border-radius:16px;padding:36px;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;color:#44403c;font-size:15px;line-height:1.5;">
+    <div style="font-size:13px;font-weight:500;color:#78716c;margin:0 0 10px;">{{ kicker }}</div>
+    <h1 style="margin:0 0 14px;font-family:Poppins,'Segoe UI',Helvetica,Arial,sans-serif;font-size:28px;line-height:1.2;font-weight:600;color:#16130f;">{{ title }}</h1>
+    <p style="margin:0 0 20px;">{{ body }}</p>
+    {% block action %}{% endblock %}
+    <p style="margin:20px 0 0;font-size:13px;color:#78716c;">{{ note }}</p>
+    {% if fallback_url %}
+    <hr style="border:0;border-top:1px solid #ececea;margin:20px 0;">
+    <p style="margin:0;font-size:12px;color:#78716c;">If the button does not work, copy this link into your browser:<br><a href="{{ fallback_url }}" style="color:#4f3387;word-break:break-all;">{{ fallback_url }}</a></p>
+    {% endif %}
+  </td></tr>
+  <tr><td align="center" style="padding:20px 24px 0;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#9a948c;">
+    {{ footer }}<br>Reply to this email if you did not expect it, or write to <a href="mailto:hello@trickshot.tech" style="color:#9a948c;">hello@trickshot.tech</a>.
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>{% endautoescape %}

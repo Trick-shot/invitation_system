@@ -6,7 +6,6 @@ workspace members endpoint and the platform's create-workspace endpoint.
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -51,21 +50,23 @@ def invite_member(*, workspace, email, role, full_name="", phone="", invited_by=
     return invite
 
 
-def deliver_invite(invite: MemberInvite):
+def deliver_invite(invite: MemberInvite, *, kind: str = "invite"):
+    """kind: "invite" for a new member, "reset" for a forgotten password. Same link, different words."""
+    from .emails import send_invite_email, send_reset_email
+
     url = invite_url(invite)
     user = invite.user
     ws = invite.workspace
-    body = f"{ws.name} invited you to Trickshot Invitations. Set your password: {url}"
+    if kind == "reset":
+        if user.email:
+            send_reset_email(user=user, url=url)
+        return
+    body = f"{ws.name} added you on Trickshot Invitations. Set your password: {url}"
     if user.phone:
         send_transactional_sms(workspace=ws, to=user.phone, body=body)
     if user.email:
-        send_mail(
-            subject=f"You have been invited to {ws.name}",
-            message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
+        role = Membership.objects.filter(user=user, workspace=ws).values_list("role", flat=True).first() or "door_staff"
+        send_invite_email(user=user, workspace=ws, url=url, inviter=invite.invited_by, role=role)
 
 
 @transaction.atomic
