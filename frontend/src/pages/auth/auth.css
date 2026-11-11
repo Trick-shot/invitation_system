@@ -8,3 +8,10 @@
 .blob { width: 260px; height: 260px; pointer-events: none; mix-blend-mode: multiply; margin-bottom: 0; }
 .blob.hidden { display: none; }
 @media (max-height: 760px) { .blob { width: 180px; height: 180px; } }
+@media (max-width: 600px) {
+  .auth-canvas { padding: 16px 16px 32px; }
+  .auth-wrap { max-width: none; }
+  .blob { width: 140px; height: 140px; margin-top: 4px; }
+  .auth-card { padding: 28px 22px; border-radius: 16px; }
+  .auth-card h1 { font-size: 28px; }
+}
