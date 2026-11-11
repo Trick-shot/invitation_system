@@ -22,4 +22,4 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: sudo bash /srv/invitations/deploy/update.sh
+          script: sudo bash /var/www/projects/invitations/deploy/update.sh
