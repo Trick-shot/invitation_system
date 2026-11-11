@@ -31,18 +31,19 @@ if systemctl is-active --quiet mysql || systemctl is-active --quiet mariadb; the
 else
   apt-get install -y -q mysql-server && systemctl enable --now mysql
 fi
-# Node: the build needs 20+. Never replace a system Node another app may depend on;
-# if it is missing or too old, fetch a private Node 20 under /opt/node20 for our build only.
+# Node: Vite 8 / rolldown need Node 20.19+ or 22.12+; npm silently skips rolldown's native binding on
+# anything older, and the build then fails. Never replace a system Node another app may depend on;
+# if it is missing or too old, fetch a private Node 22 under /opt/node22 for our build only.
 NODE_MAJOR="$(command -v node >/dev/null && node -v | cut -d. -f1 | tr -d v || echo 0)"
-if [ "${NODE_MAJOR:-0}" -ge 20 ]; then
+if [ "${NODE_MAJOR:-0}" -ge 22 ]; then
   NODE_PATH_PREFIX=""
 else
-  if [ ! -x /opt/node20/bin/node ]; then
-    echo "System Node is ${NODE_MAJOR:-missing}; installing a private Node 20 in /opt/node20 (system Node untouched)."
-    mkdir -p /opt/node20
-    curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz | tar -xJ --strip-components=1 -C /opt/node20
+  if [ ! -x /opt/node22/bin/node ]; then
+    echo "System Node is ${NODE_MAJOR:-missing}; installing a private Node 22 in /opt/node22 (system Node untouched)."
+    mkdir -p /opt/node22
+    curl -fsSL https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz | tar -xJ --strip-components=1 -C /opt/node22
   fi
-  NODE_PATH_PREFIX="/opt/node20/bin:"
+  NODE_PATH_PREFIX="/opt/node22/bin:"
 fi
 echo "NODE_PATH_PREFIX=${NODE_PATH_PREFIX}" > /etc/invitations-build.env
 
@@ -63,8 +64,12 @@ FLUSH PRIVILEGES;
 SQL
 
 say "Code"
+# git runs as root on a tree owned by www-data; without this it refuses with "dubious ownership".
+git config --system --get-all safe.directory 2>/dev/null | grep -qx "$APP_DIR" || git config --system --add safe.directory "$APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then
-  git -C "$APP_DIR" fetch -q origin "$BRANCH" && git -C "$APP_DIR" checkout -q "$BRANCH" && git -C "$APP_DIR" reset -q --hard "origin/$BRANCH"
+  git -C "$APP_DIR" fetch -q origin "$BRANCH"
+  git -C "$APP_DIR" checkout -q "$BRANCH"
+  git -C "$APP_DIR" reset -q --hard "origin/$BRANCH"
 else
   git clone -q -b "$BRANCH" "$REPO" "$APP_DIR"
 fi
@@ -110,7 +115,7 @@ sudo -u "$APP_USER" -H bash -c "cd $APP_DIR && .venv/bin/python manage.py migrat
 mkdir -p "$APP_DIR/media" && chown -R "$APP_USER:$APP_USER" "$APP_DIR/media"
 
 say "Frontend build"
-sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX}\$PATH npm_config_cache=$APP_DIR/.cache/npm; cd $APP_DIR/frontend && npm ci --silent --no-audit --no-fund && npm run build --silent"
+sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX}\$PATH npm_config_cache=$APP_DIR/.cache/npm; cd $APP_DIR/frontend && npm ci --no-audit --no-fund && npm run build"
 
 say "Services"
 sed "s#/srv/invitations#${APP_DIR}#g" "$APP_DIR/deploy/gunicorn.service" > /etc/systemd/system/invitations.service
