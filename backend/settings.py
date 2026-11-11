@@ -147,6 +147,8 @@ Q_CLUSTER = {
     "retry": 180,
     "queue_limit": 50,
     "orm": "default",
+    # How often the pusher polls the ORM broker. The 0.2s default keeps a core ~30% busy while idle.
+    "poll": config("Q_POLL", default=1.0, cast=float),
     "sync": config("Q_SYNC", default=False, cast=bool),  # True in tests: run jobs inline
 }
 

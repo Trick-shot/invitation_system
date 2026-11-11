@@ -9,6 +9,9 @@ WorkingDirectory=/srv/invitations
 EnvironmentFile=/srv/invitations/.env
 ExecStart=/srv/invitations/.venv/bin/python manage.py qcluster
 Restart=always
+# qcluster does not always exit on SIGTERM; do not hold restarts for systemd's 90s default.
+# Interrupted jobs are re-queued by django-q (Q_CLUSTER retry).
+TimeoutStopSec=20
 
 [Install]
 WantedBy=multi-user.target
