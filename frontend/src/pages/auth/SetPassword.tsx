@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
-import { Button, Chevron, Field, Illustration, Input } from "../../components/ui";
+import { Button, Field, Illustration, Input } from "../../components/ui";
 import "../onboarding/onboarding.css";
 
 interface Info { workspace_name: string; invited_by: string; email: string; full_name: string; valid: boolean }
@@ -49,7 +49,7 @@ export default function SetPassword() {
             <Field label="You will sign in with" hint="This is your email address. It cannot be changed here."><Input type="email" value={info.email} readOnly /></Field>
             <Field label="Your full name"><Input value={name} onChange={(e) => setName(e.target.value)} required /></Field>
             <Field label="Password" hint="Long enough. Nothing else to worry about." error={error}><Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} required invalid={!!error} /></Field>
-            <Button type="submit" variant="primary" size="xl" block loading={busy}>Create my account <Chevron /></Button>
+            <Button type="submit" variant="primary" size="xl" block loading={busy}>Create my account</Button>
           </form>
         )}
       </div>
