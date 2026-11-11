@@ -1,0 +1,18 @@
+# Auto-deploy on push to v2 once these repo secrets exist:
+#   DEPLOY_HOST (server IP or hostname), DEPLOY_USER (a sudo user), DEPLOY_SSH_KEY (its private key)
+name: Deploy
+on:
+  push:
+    branches: [v2]
+  workflow_dispatch:
+jobs:
+  deploy:
+    if: ${{ secrets.DEPLOY_HOST != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: sudo bash /srv/invitations/deploy/update.sh
