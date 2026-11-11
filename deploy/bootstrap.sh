@@ -10,7 +10,7 @@ set -euo pipefail
 DOMAIN="${DOMAIN:-test.trickshot.tech}"
 BRANCH="${BRANCH:-main}"
 REPO="${REPO:-https://github.com/Trick-shot/invitation_system}"
-APP_DIR="${APP_DIR:-/var/www/projects/invitations}"
+APP_DIR="${APP_DIR:-/var/www/projects/invitation_system}"
 mkdir -p "$(dirname "$APP_DIR")"
 APP_USER="www-data"
 OWNER_EMAIL="${OWNER_EMAIL:-}"

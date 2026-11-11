@@ -9,23 +9,23 @@ curl -fsSL https://raw.githubusercontent.com/Trick-shot/invitation_system/main/d
   | sudo DOMAIN=test.trickshot.tech OWNER_EMAIL=you@example.com SEED_DEMO=1 bash
 ```
 
-It installs MySQL, Nginx, Node and Python, clones the `main` branch into `/var/www/projects/invitations` (override with `APP_DIR=...`), writes `.env` with generated secrets, migrates, builds the frontend, starts the gunicorn and worker services, gets a Let's Encrypt certificate, creates the platform owner (prints the password once) and, with `SEED_DEMO=1`, loads the demo workspace. Pass `BEEM_API_KEY=... BEEM_SECRET_KEY=... BEEM_SENDER_ID=...` to send real SMS; without them the console provider logs messages instead of sending.
+It installs MySQL, Nginx, Node and Python, clones the `main` branch into `/var/www/projects/invitation_system` (override with `APP_DIR=...`), writes `.env` with generated secrets, migrates, builds the frontend, starts the gunicorn and worker services, gets a Let's Encrypt certificate, creates the platform owner (prints the password once) and, with `SEED_DEMO=1`, loads the demo workspace. Pass `BEEM_API_KEY=... BEEM_SECRET_KEY=... BEEM_SENDER_ID=...` to send real SMS; without them the console provider logs messages instead of sending.
 
 Re-running the script is safe; it updates in place and keeps `.env`.
 
-Afterwards: `sudo bash /var/www/projects/invitations/deploy/update.sh` pulls and restarts. Add the repo secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and every push to `main` deploys itself through `.github/workflows/deploy.yml`.
+Afterwards: `sudo bash /var/www/projects/invitation_system/deploy/update.sh` pulls and restarts. Add the repo secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and every push to `main` deploys itself through `.github/workflows/deploy.yml`.
 
 Logs: `journalctl -u invitations -u invitations-q -f`. Beem delivery reports: set the DLR URL in the Beem dashboard to `https://<domain>/api/webhooks/delivery/`.
 
 ## By hand
 
-Ubuntu server, MySQL, Nginx, Gunicorn, django-q worker. Everything lives in `/var/www/projects/invitations` (override with `APP_DIR=...`).
+Ubuntu server, MySQL, Nginx, Gunicorn, django-q worker. Everything lives in `/var/www/projects/invitation_system` (override with `APP_DIR=...`).
 
 ```bash
 sudo apt install python3.12-venv mysql-server nginx certbot python3-certbot-nginx
-sudo mkdir -p /var/www/projects/invitations && sudo chown www-data:www-data /var/www/projects/invitations
-sudo -u www-data git clone -b main https://github.com/Trick-shot/invitation_system /var/www/projects/invitations
-cd /var/www/projects/invitations
+sudo mkdir -p /var/www/projects/invitation_system && sudo chown www-data:www-data /var/www/projects/invitation_system
+sudo -u www-data git clone -b main https://github.com/Trick-shot/invitation_system /var/www/projects/invitation_system
+cd /var/www/projects/invitation_system
 sudo -u www-data python3 -m venv .venv
 sudo -u www-data .venv/bin/pip install -r requirements.txt
 sudo -u www-data cp .env.example .env   # then edit: SECRET_KEY, FIELD_ENCRYPTION_KEY, MYSQL_*, BEEM_*, SITE_URL, ALLOWED_HOSTS, DEBUG=False
