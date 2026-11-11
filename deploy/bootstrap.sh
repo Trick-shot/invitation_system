@@ -48,7 +48,7 @@ echo "NODE_PATH_PREFIX=${NODE_PATH_PREFIX}" > /etc/invitations-build.env
 
 say "MySQL database"
 DB_PASS_FILE=/root/.invitations-db-pass
-if [ ! -f "$DB_PASS_FILE" ]; then tr -dc 'A-Za-z0-9' </dev/urandom | head -c 28 > "$DB_PASS_FILE"; fi
+if [ ! -f "$DB_PASS_FILE" ]; then python3 -c 'import secrets;print(secrets.token_hex(14))' > "$DB_PASS_FILE"; fi
 DB_PASS="$(cat "$DB_PASS_FILE")"
 mysql <<SQL
 CREATE DATABASE IF NOT EXISTS invitations CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -68,7 +68,7 @@ chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
 say "Environment"
 if [ ! -f "$APP_DIR/.env" ]; then
-  SECRET="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 50)"
+  SECRET="$(python3 -c 'import secrets;print(secrets.token_hex(32))')"
   FERNET="$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"
   cat > "$APP_DIR/.env" <<ENV
 SECRET_KEY=${SECRET}
