@@ -1,9 +1,12 @@
 .env
-
-# file: ~/.gitignore_global
-.DS_Store
-.idea__pycache__/
+db.sqlite3
+media/
+staticfiles/
+node_modules/
+__pycache__/
 *.pyc
-# Ignore JetBrains IDE project files
+.pytest_cache/
+.coverage
 .idea/
-
+.DS_Store
+frontend/dist/
