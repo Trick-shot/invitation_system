@@ -124,7 +124,7 @@ export function EditEventModal({ open, onClose, event }: { open: boolean; onClos
         <div className="panel" style={{ padding: 14, borderColor: "var(--danger-subtle)", background: "var(--danger-subtle)", marginTop: 6 }}>
           <b style={{ color: "var(--danger-text)" }}>Delete this event</b>
           <p className="muted" style={{ fontSize: 13, margin: "4px 0 10px" }}>Removes the event, its {event.invitation_count} invitations, their cards and the scan log. Links already sent to guests stop working. This cannot be undone.</p>
-          <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
+          <div className="row delete-row" style={{ gap: 8, alignItems: "flex-end" }}>
             <Field label={`Type ${event.name} to confirm`}><Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={event.name} /></Field>
             <Button variant="danger" disabled={!canDelete} loading={remove.isPending} onClick={() => remove.mutate()}>Delete event</Button>
           </div>

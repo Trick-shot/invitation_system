@@ -168,3 +168,4 @@ button.sms-bubble:hover { background: #2e2e34; }
 .iphone-field { flex: 1; border: 1px solid #333; border-radius: 16px; padding: 6px 12px; font-size: 13px; color: #6c6c74; }
 @media (max-width: 1100px) { .msg-layout { grid-template-columns: 1fr; } .msg-side { max-width: 560px; } }
 @media (max-width: 820px) { .iphone { height: 520px; max-width: 300px; } }
+@media (max-width: 820px) { .delete-row { flex-direction: column; align-items: stretch !important; } .delete-row .field { width: 100%; } }
