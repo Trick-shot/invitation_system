@@ -29,3 +29,4 @@
 .ob-item { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-xl); background: var(--bg-inset); }
 .ob-item.next { background: var(--bg-accent-subtle); }
 @media (max-width: 720px) { .ob-card { padding: 32px 20px 24px; } .ob-grid, .ob-grid.three { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .ob-blob { display: none; } .ob-canvas { padding: 16px 12px; } }

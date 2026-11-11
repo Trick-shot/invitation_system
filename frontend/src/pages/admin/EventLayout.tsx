@@ -4,6 +4,8 @@ import { api, ev } from "../../api/client";
 import type { Event } from "../../api/types";
 import { Badge, Button, CardThumb, Tabs, fmtDate, PageTransition } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
+import { EditEventModal } from "./Events";
+import { useState } from "react";
 
 export function useEvent() {
   const { slug } = useWorkspace();
@@ -14,6 +16,7 @@ export function useEvent() {
 
 export default function EventLayout() {
   const { slug, eventId, event, isLoading, error } = useEvent();
+  const [editing, setEditing] = useState(false);
   if (error) return <Navigate to={`/app/${slug}`} replace />;
   const base = `/app/${slug}/events/${eventId}`;
   const tabs = [{ to: base, label: "Overview", end: true }, { to: `${base}/guests`, label: "Guests" }, { to: `${base}/template`, label: "Template" }, { to: `${base}/message`, label: "Message" }, { to: `${base}/staff`, label: "Staff" }, { to: `${base}/send`, label: "Send" }, { to: `${base}/scans`, label: "Scan log" }];
@@ -30,8 +33,9 @@ export default function EventLayout() {
             <div className="event-head">
               <CardThumb />
               <div className="grow"><h1 style={{ fontSize: 28 }}>{event.name}</h1><div className="muted">{fmtDate(event.date)}{event.venue ? `, ${event.venue}` : ""}</div></div>
-              <ExportButton slug={slug} eventId={eventId} />
+              <div className="row" style={{ gap: 8 }}><Button onClick={() => setEditing(true)}>Edit event</Button><ExportButton slug={slug} eventId={eventId} /></div>
             </div>
+            <EditEventModal open={editing} onClose={() => setEditing(false)} event={event} />
             <div className="readiness">
               <div><div className="kicker">Template</div>{event.has_template ? "Ready" : <span style={{ color: "var(--warning-text)" }}>Not set</span>}</div>
               <div><div className="kicker">Message</div>{event.has_message ? "Ready" : "Not set"}</div>
@@ -41,7 +45,7 @@ export default function EventLayout() {
             </div>
           </>
         )}
-        <Tabs items={tabs} />
+        <div className="row" style={{ gap: 8, alignItems: "stretch" }}><div className="grow" style={{ minWidth: 0 }}><Tabs items={tabs} /></div>{event && <button className="m-only btn btn-ghost btn-sm" style={{ alignSelf: "center" }} onClick={() => setEditing(true)}>Edit</button>}</div>
       </div>
       <div className="content" style={{ paddingTop: 20 }}>
         <PageTransition><Outlet /></PageTransition>

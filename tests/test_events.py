@@ -62,3 +62,11 @@ def test_dashboard_shape(api_a, ws_a, event_a, inv_a):
     assert r.status_code == 200
     assert r.data["tiles"]["arrived"]["of"] == 2
     assert [s["stage"] for s in r.data["funnel"]] == ["invited", "sent", "delivered", "opened", "arrived"]
+
+
+def test_event_rename_and_delete(api_a, ws_a, event_a):
+    r = api_a.patch(f"/api/workspaces/{ws_a.slug}/events/{event_a.id}/", {"name": "Renamed Communion", "venue": "New Hall"}, format="json")
+    assert r.status_code == 200 and r.data["name"] == "Renamed Communion"
+    r = api_a.delete(f"/api/workspaces/{ws_a.slug}/events/{event_a.id}/")
+    assert r.status_code == 204
+    assert api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.id}/").status_code == 404

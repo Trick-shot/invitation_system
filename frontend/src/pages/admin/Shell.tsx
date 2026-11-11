@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
@@ -18,6 +18,8 @@ export const Icon = {
   filter: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 3.5h12l-4.5 5.5v4l-3-1.5V9z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>,
   check: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 9.5l3.5 3.5L14 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   x: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>,
+  qr: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.5 6V3.5a1 1 0 0 1 1-1H6M12 2.5h2.5a1 1 0 0 1 1 1V6M15.5 12v2.5a1 1 0 0 1-1 1H12M6 15.5H3.5a1 1 0 0 1-1-1V12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><rect x="5.5" y="5.5" width="3" height="3" rx=".6" fill="currentColor" /><rect x="9.5" y="5.5" width="3" height="3" rx=".6" fill="currentColor" /><rect x="5.5" y="9.5" width="3" height="3" rx=".6" fill="currentColor" /><path d="M9.5 9.5h1.2v1.2H9.5zM11.3 11.3h1.2v1.2h-1.2z" fill="currentColor" /></svg>,
+  chevron: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   menu: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>,
   back: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   share: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="3.5" r="1.8" stroke="currentColor" strokeWidth="1.4" /><circle cx="4" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.4" /><circle cx="12" cy="12.5" r="1.8" stroke="currentColor" strokeWidth="1.4" /><path d="M5.6 7.2l4.8-2.8M5.6 8.8l4.8 2.8" stroke="currentColor" strokeWidth="1.4" /></svg>,
@@ -63,8 +65,8 @@ export default function Shell() {
           <NavLink to={`/app/${slug}/settings`} className="navitem">{Icon.settings} Settings</NavLink>
         </nav>
         <div className="foot">
-          <Button variant="primary" block onClick={() => nav("/scan")}>Open scanner</Button>
-          <div className="user"><Avatar initials={me.initials} round /><span className="grow">{me.full_name || me.email}<small>{role === "admin" ? "Admin" : "Coordinator"}</small></span><button className="btn btn-ghost btn-sm" onClick={signOut}>Sign out</button></div>
+          <Button variant="primary" block onClick={() => nav("/scan")}><span className="row" style={{ gap: 8, justifyContent: "center" }}>{Icon.qr} Open scanner</span></Button>
+          <div className="user m-only"><Avatar initials={me.initials} round /><span className="grow">{me.full_name || me.email}<small>{role === "admin" ? "Admin" : "Coordinator"}</small></span><button className="btn btn-ghost btn-sm" onClick={signOut}>Sign out</button></div>
         </div>
       </aside>
       <div className="main">
@@ -96,6 +98,37 @@ export function Topbar({ crumbs, right, searchPlaceholder, onSearch, title, sub,
         <label className="search">{Icon.search}<input placeholder={searchPlaceholder} onChange={(e) => onSearch?.(e.target.value)} /><span className="kbd">⌘ K</span></label>
       )}
       {right}
+      <UserMenu />
+    </div>
+  );
+}
+
+
+/** The signed-in person, top right, with a small menu. Lives in the top bar so the sidebar stays about the workspace. */
+export function UserMenu() {
+  const { me, signOut } = useAuth();
+  const { slug, role } = useWorkspace();
+  const nav = useNavigate();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (!open) return; const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); }; document.addEventListener("mousedown", h); document.addEventListener("keydown", k); return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); }; }, [open]);
+  if (!me) return null;
+  return (
+    <div className="usermenu d-only" ref={ref}>
+      <button className="usermenu-btn" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
+        <Avatar initials={me.initials} round /><span className="who"><span className="n">{me.full_name || me.email}</span><small>{role === "admin" ? "Admin" : "Coordinator"}</small></span><span className={`quiet chev ${open ? "up" : ""}`}>{Icon.chevron}</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div className="usermenu-pop" role="menu" initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={{ duration: 0.14 }}>
+            <div className="usermenu-head"><b>{me.full_name || "Your account"}</b><small>{me.email}</small></div>
+            <button role="menuitem" onClick={() => { setOpen(false); nav(`/app/${slug}/settings`); }}>{Icon.settings} Workspace settings</button>
+            <button role="menuitem" onClick={() => { setOpen(false); nav("/scan"); }}>{Icon.qr} Open scanner</button>
+            <div className="usermenu-sep" />
+            <button role="menuitem" onClick={() => { setOpen(false); signOut(); }}>Sign out</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

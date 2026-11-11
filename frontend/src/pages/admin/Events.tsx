@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { api, ApiError, ws } from "../../api/client";
@@ -79,6 +79,56 @@ export function NewEventModal({ open, onClose, onCreated }: { open: boolean; onC
         </div>
         <Field label="Venue"><Input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Kunduchi Beach Hotel" /></Field>
         <Field label="Kind of event"><div className="row" style={{ gap: 6, flexWrap: "wrap" }}>{kinds.map(([k, l]) => <Chip key={k} on={form.kind === k} onClick={() => setForm({ ...form, kind: k })}>{l}</Chip>)}</div></Field>
+      </div>
+    </Modal>
+  );
+}
+
+
+/** Edit the basics of an existing event, or delete it after typing its name. */
+export function EditEventModal({ open, onClose, event }: { open: boolean; onClose: () => void; event: Event }) {
+  const { slug } = useWorkspace();
+  const qc = useQueryClient();
+  const nav = useNavigate();
+  const toast = useToast();
+  const [form, setForm] = useState({ name: event.name, date: event.date, start_time: event.start_time ?? "", venue: event.venue, kind: event.kind, status: event.status });
+  const [confirm, setConfirm] = useState("");
+  const [err, setErr] = useState<ApiError | null>(null);
+  useEffect(() => { if (open) { setForm({ name: event.name, date: event.date, start_time: event.start_time ?? "", venue: event.venue, kind: event.kind, status: event.status }); setConfirm(""); setErr(null); } }, [open, event]);
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ["events", slug] }); qc.invalidateQueries({ queryKey: ["event", slug, String(event.id)] }); };
+  const save = useMutation({
+    mutationFn: () => api<Event>(`${ws(slug)}/events/${event.id}/`, { method: "PATCH", body: { ...form, start_time: form.start_time || null } }),
+    onSuccess: () => { invalidate(); onClose(); toast("Event updated"); },
+    onError: (e) => setErr(e as ApiError),
+  });
+  const remove = useMutation({
+    mutationFn: () => api(`${ws(slug)}/events/${event.id}/`, { method: "DELETE" }),
+    onSuccess: () => { invalidate(); onClose(); toast(`${event.name} deleted`); nav(`/app/${slug}`); },
+    onError: (e) => setErr(e as ApiError),
+  });
+  const kinds: [EventKind, string][] = [["wedding", "Wedding"], ["communion", "Communion"], ["graduation", "Graduation"], ["other", "Something else"]];
+  const statuses: [Event["status"], string, string][] = [["draft", "Draft", "Nothing sent yet"], ["open", "Doors open", "Scanner admits guests"], ["closed", "Closed", "Scanner rejects everyone"]];
+  const canDelete = confirm.trim() === event.name;
+  return (
+    <Modal open={open} onClose={onClose} title="Edit event" sub="Changes apply everywhere at once: cards, messages and the scanner."
+      actions={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="ink" loading={save.isPending} onClick={() => save.mutate()} disabled={!form.name || !form.date}>Save changes</Button></>}>
+      <div className="stack" style={{ gap: 14 }}>
+        <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
+        <div className="row" style={{ alignItems: "flex-start" }}>
+          <Field label="Date" error={err?.field("date")}><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
+          <Field label="Start time"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></Field>
+        </div>
+        <Field label="Venue"><Input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} /></Field>
+        <Field label="Kind of event"><div className="row" style={{ gap: 6, flexWrap: "wrap" }}>{kinds.map(([k, l]) => <Chip key={k} on={form.kind === k} onClick={() => setForm({ ...form, kind: k })}>{l}</Chip>)}</div></Field>
+        <Field label="Status" hint={statuses.find((s) => s[0] === form.status)?.[2]}><div className="row" style={{ gap: 6, flexWrap: "wrap" }}>{statuses.map(([k, l]) => <Chip key={k} on={form.status === k} onClick={() => setForm({ ...form, status: k })}>{l}</Chip>)}</div></Field>
+        <div className="panel" style={{ padding: 14, borderColor: "var(--danger-subtle)", background: "var(--danger-subtle)", marginTop: 6 }}>
+          <b style={{ color: "var(--danger-text)" }}>Delete this event</b>
+          <p className="muted" style={{ fontSize: 13, margin: "4px 0 10px" }}>Removes the event, its {event.invitation_count} invitations, their cards and the scan log. Links already sent to guests stop working. This cannot be undone.</p>
+          <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
+            <Field label={`Type ${event.name} to confirm`}><Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={event.name} /></Field>
+            <Button variant="danger" disabled={!canDelete} loading={remove.isPending} onClick={() => remove.mutate()}>Delete event</Button>
+          </div>
+        </div>
       </div>
     </Modal>
   );
