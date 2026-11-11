@@ -135,8 +135,8 @@ server {
     client_max_body_size 20m;
     root ${APP_DIR}/frontend/dist;
     index index.html;
-    location /api/ { proxy_pass http://unix:/run/invitations.sock; proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; }
-    location /admin/ { proxy_pass http://unix:/run/invitations.sock; proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; }
+    location /api/ { proxy_pass http://unix:/run/invitations/gunicorn.sock; proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; }
+    location /admin/ { proxy_pass http://unix:/run/invitations/gunicorn.sock; proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; }
     location /static/ { alias ${APP_DIR}/staticfiles/; expires 30d; }
     location /media/ { alias ${APP_DIR}/media/; expires 7d; add_header X-Robots-Tag "noindex"; }
     location / { try_files \$uri /index.html; }

@@ -7,7 +7,9 @@ User=www-data
 Group=www-data
 WorkingDirectory=/srv/invitations
 EnvironmentFile=/srv/invitations/.env
-ExecStart=/srv/invitations/.venv/bin/gunicorn backend.wsgi:application --workers 3 --bind unix:/run/invitations.sock --timeout 60
+# /run is root-owned; systemd creates /run/invitations for www-data so gunicorn can bind there.
+RuntimeDirectory=invitations
+ExecStart=/srv/invitations/.venv/bin/gunicorn backend.wsgi:application --workers 3 --bind unix:/run/invitations/gunicorn.sock --timeout 60
 Restart=always
 
 [Install]
