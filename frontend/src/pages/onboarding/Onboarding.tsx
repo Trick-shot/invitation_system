@@ -126,7 +126,7 @@ function Step5({ onDone, back, later }: { onDone: () => void; back: () => void; 
   );
 }
 // ImportModal expects the event route context; give it the same params it reads.
-function OnboardingImport(props: { open: boolean; onClose: () => void; onDone: () => void }) { return <ImportModal {...props} />; }
+function OnboardingImport(props: { open: boolean; onClose: () => void; onDone: () => void }) { return <ImportModal {...props} onNext={props.onClose} nextLabel="Continue" />; }
 
 function Step6({ onDone, back, later }: { onDone: () => void; back: () => void; later: () => void }) {
   const { slug, me } = useWorkspace();

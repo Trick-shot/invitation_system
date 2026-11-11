@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, Empty, Field, Input, Modal, Track, useToast } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, Empty, Field, Illustration, Input, Modal, Track, useToast } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
 
@@ -17,6 +17,7 @@ export default function Guests() {
   const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
+  const navigate = useNavigate();
   const [removing, setRemoving] = useState<Invitation | null>(null);
   const qc = useQueryClient();
   const toast = useToast();
@@ -64,7 +65,7 @@ export default function Guests() {
         </div>
       )}
       <AddGuestModal open={adding} onClose={() => setAdding(false)} onAdded={invalidate} />
-      <ImportModal open={importing} onClose={() => setImporting(false)} onDone={invalidate} />
+      <ImportModal open={importing} onClose={() => setImporting(false)} onDone={invalidate} onNext={() => navigate("../send")} />
       <Modal open={!!removing} onClose={() => setRemoving(null)} title={`Remove ${removing?.name}?`} sub="Their card and any link already sent will stop working. The number is freed for a new invitation."
         actions={<><Button variant="ghost" onClick={() => setRemoving(null)}>Keep</Button><Button variant="danger" loading={remove.isPending} onClick={() => removing && remove.mutate(removing)}>Remove guest</Button></>} />
     </>
@@ -97,12 +98,14 @@ export function AddGuestModal({ open, onClose, onAdded }: { open: boolean; onClo
 }
 
 type Source = "contacts" | "paste" | "file";
-export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
+export function ImportModal({ open, onClose, onDone, onNext, nextLabel }: { open: boolean; onClose: () => void; onDone: () => void; onNext?: () => void; nextLabel?: string }) {
   const { slug, eventId } = useEvent();
   const supportsContacts = typeof navigator !== "undefined" && "contacts" in navigator && "select" in (navigator as unknown as { contacts: { select?: unknown } }).contacts;
   const [source, setSource] = useState<Source>(supportsContacts ? "contacts" : "paste");
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [fileError, setFileError] = useState<{ code: string; detail: string; headings?: string[] } | null>(null);
+  const [done, setDone] = useState<{ created: number; skipped: number; leftBehind: number } | null>(null);
   const [over, setOver] = useState(false);
   const toast = useToast();
   const base = `${ev(slug, eventId)}/invitations/import/`;
@@ -113,13 +116,14 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
       if (input.rows) return api<ImportPreview>(base + "preview/", { method: "POST", body: { source: "rows", rows: input.rows } });
       return api<ImportPreview>(base + "preview/", { method: "POST", form: fd });
     },
-    onSuccess: setPreview,
-    onError: (e) => toast((e as ApiError).summary, true),
+    onSuccess: (p) => { setFileError(null); setPreview(p); },
+    onError: (e) => { const err = e as ApiError; const d = err.data as { code?: string; detail?: string; headings?: string[] } | null; if (d?.code) setFileError({ code: d.code, detail: d.detail ?? err.summary, headings: d.headings }); else toast(err.summary, true); },
   });
   const commit = useMutation({
     mutationFn: (rows: PreviewRow[]) => api<{ created: number; skipped: unknown[] }>(base + "commit/", { method: "POST", body: { rows: rows.map((r) => ({ name: r.name, phone: r.phone, capacity: r.capacity })) } }),
-    onSuccess: (r) => { toast(`${r.created} guests added`); setPreview(null); setText(""); onDone(); onClose(); },
+    onSuccess: (r) => { setPreview(null); setText(""); setDone({ created: r.created, skipped: r.skipped.length, leftBehind: preview?.counts.needs_attention ?? 0 }); onDone(); },
   });
+  const close = () => { setPreview(null); setFileError(null); setDone(null); onClose(); };
   const pickContacts = async () => {
     try {
       const nav = navigator as unknown as { contacts: { select: (p: string[], o: { multiple: boolean }) => Promise<{ name?: string[]; tel?: string[] }[]> } };
@@ -133,9 +137,18 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
   const setCap = (i: number, cap: number) => preview && setPreview({ ...preview, rows: preview.rows.map((r, j) => (j === i ? { ...r, capacity: cap } : r)) });
 
   return (
-    <Modal open={open} onClose={() => { setPreview(null); onClose(); }} title={preview ? "Check before adding" : "Bring in your guests"} sub={preview ? `${preview.found} found, ${preview.counts.ready} ready, ${preview.counts.duplicate} duplicate, ${preview.counts.needs_attention} need attention` : "Three ways in. Nothing is saved until you confirm the list."} wide
-      actions={preview ? <><Button variant="ghost" onClick={() => setPreview(null)}>Back</Button><Button variant="ink" loading={commit.isPending} disabled={!ready.length} onClick={() => commit.mutate(ready)}>Add {ready.length} guests</Button></> : <Button variant="ghost" onClick={onClose}>Cancel</Button>}>
-      {!preview ? (
+    <Modal open={open} onClose={close} title={done ? `${done.created} guest${done.created === 1 ? "" : "s"} added` : preview ? (ready.length ? "Check before adding" : "Nothing can be added yet") : "Bring in your guests"} sub={done ? "Their cards are being built now. Sending is the next step." : preview ? `${preview.found} found: ${preview.counts.ready} ready, ${preview.counts.duplicate} duplicate, ${preview.counts.needs_attention} need attention` : "Nothing is saved until you confirm the list."} wide
+      actions={done ? <><Button variant="ghost" onClick={close}>Back to guests</Button>{onNext && <Button variant="primary" onClick={() => { close(); onNext(); }}>{nextLabel ?? "Send invitations"}</Button>}</> : preview ? <><Button variant="ghost" onClick={() => setPreview(null)}>Fix the file and upload again</Button><Button variant="ink" loading={commit.isPending} disabled={!ready.length} onClick={() => commit.mutate(ready)}>{ready.length ? `Add ${ready.length} guest${ready.length === 1 ? "" : "s"}` : "Nothing to add"}</Button></> : <Button variant="ghost" onClick={close}>Cancel</Button>}>
+      {done ? (
+        <div className="empty" style={{ padding: "8px 0 0" }}>
+          <Illustration name="check-badge" size={160} />
+          <p className="muted" style={{ maxWidth: 420 }}>
+            Each guest now has a card with their own QR code. Nothing has been sent yet.
+            {done.skipped > 0 && <> {done.skipped} row{done.skipped === 1 ? " was" : "s were"} skipped because the number was already on the list.</>}
+            {done.leftBehind > 0 && <> {done.leftBehind} row{done.leftBehind === 1 ? "" : "s"} that needed attention {done.leftBehind === 1 ? "was" : "were"} left out; fix {done.leftBehind === 1 ? "it" : "them"} in your spreadsheet and import again.</>}
+          </p>
+        </div>
+      ) : !preview ? (
         <div className="stack" style={{ gap: 16 }}>
           <div className="row" style={{ gap: 6 }}>
             {supportsContacts && <Chip on={source === "contacts"} onClick={() => setSource("contacts")}>From my phone</Chip>}
@@ -149,6 +162,16 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
             </Field>
             <div><Button variant="ink" loading={run.isPending} disabled={!text.trim()} onClick={() => run.mutate({ source: "paste", text })}>Check the list</Button></div>
           </>}
+          {fileError && (
+            <div className="panel" style={{ padding: 14, background: "var(--danger-subtle)", border: 0, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ width: 28, height: 28, borderRadius: 14, background: "var(--danger)", color: "var(--danger-on)", display: "grid", placeItems: "center", flex: "none" }}>{Icon.x}</span>
+              <div className="stack" style={{ gap: 4 }}>
+                <b style={{ color: "var(--danger-text)" }}>{{ unreadable: "We could not open that file", empty: "The file is empty", no_phone_column: "No phone numbers found", old_excel: "That is an old Excel format" }[fileError.code] ?? "That file did not work"}</b>
+                <span className="muted" style={{ fontSize: 13 }}>{fileError.detail}</span>
+                {fileError.code === "no_phone_column" && fileError.headings?.length ? <span className="quiet" style={{ fontSize: 13 }}>The headings we saw: {fileError.headings.join(", ")}. The template uses Name, Phone, Admits.</span> : null}
+              </div>
+            </div>
+          )}
           {source === "file" && (<>
             <div className="panel" style={{ padding: 12, background: "var(--bg-accent-subtle)", border: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 13 }}><b>Start from the template.</b> <span className="muted">Three columns: Name, Phone, Admits. Fill it in Excel or Google Sheets and upload it here.</span></span>
@@ -163,6 +186,12 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
           </>)}
         </div>
       ) : (
+        <>
+        {preview.counts.needs_attention > 0 && (
+          <div className="panel" style={{ padding: 12, marginBottom: 12, background: "var(--warning-subtle)", border: 0, color: "var(--warning-text)", fontSize: 13 }}>
+            <b>{preview.counts.needs_attention} row{preview.counts.needs_attention === 1 ? "" : "s"} cannot be added as written.</b> Each one says why below. You can add the ready rows now and fix the rest in your spreadsheet, or fix everything and upload again.
+          </div>
+        )}
         <div className="panel" style={{ maxHeight: 420, overflow: "auto" }}>
           <table className="table">
             <thead><tr><th>Guest</th><th>Phone</th><th>Admits</th><th /></tr></thead>
@@ -178,6 +207,7 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
             </tbody>
           </table>
         </div>
+        </>
       )}
     </Modal>
   );

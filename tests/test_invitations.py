@@ -210,3 +210,17 @@ def test_template_download_round_trips_through_the_importer(api_a, ws_a, event_a
     assert r.status_code == 200 and r["Content-Disposition"].endswith('guest-list-template.xlsx"')
     rows = list(parse_xlsx(r.content))
     assert rows == [("Amina Hassan", "0712 345 678", 1), ("Joseph Mwita", "+255 755 111 222", 2)]
+
+
+def test_import_whole_file_problems_are_distinct(api_a, ws_a, event_a):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/preview/"
+    r = api_a.post(url, {"source": "xlsx", "file": SimpleUploadedFile("list.xlsx", b"%PDF-1.4 not a sheet")}, format="multipart")
+    assert r.status_code == 422 and r.data["code"] == "unreadable"
+    r = api_a.post(url, {"source": "csv", "file": SimpleUploadedFile("list.csv", b"Name,Table\nAmina,4\nJoseph,7\n")}, format="multipart")
+    assert r.status_code == 422 and r.data["code"] == "no_phone_column" and r.data["headings"] == ["Name", "Table"]
+    r = api_a.post(url, {"source": "csv", "file": SimpleUploadedFile("list.csv", b"\n\n")}, format="multipart")
+    assert r.status_code == 422 and r.data["code"] == "empty"
+    r = api_a.post(url, {"source": "csv", "file": SimpleUploadedFile("old.xls", b"junk")}, format="multipart")
+    assert r.status_code == 400 and r.data["code"] == "old_excel"

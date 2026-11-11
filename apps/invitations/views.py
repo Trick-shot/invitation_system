@@ -89,13 +89,13 @@ class InvitationViewSet(WorkspaceViewSet):
             if "file" not in d:
                 raise ValidationError({"file": "Upload a .csv or .xlsx file."})
             name = (d["file"].name or "").lower()
+            data = d["file"].read()
             if name.endswith((".xlsx", ".xlsm")) or d["source"] == "xlsx":
-                try:
-                    rows = importers.parse_xlsx(d["file"].read())
-                except Exception as exc:  # noqa: BLE001
-                    raise ValidationError({"file": f"Could not read that spreadsheet: {exc}"})
+                rows = importers.parse_xlsx(data)
+            elif name.endswith(".xls"):
+                raise ValidationError({"code": "old_excel", "detail": "That is an old .xls file. In Excel choose Save As and pick .xlsx, then upload again."})
             else:
-                rows = importers.parse_csv(d["file"].read())
+                rows = importers.parse_csv(data)
         elif d["source"] == "vcard":
             if "file" not in d:
                 raise ValidationError({"file": "Upload a .vcf file."})
@@ -103,7 +103,11 @@ class InvitationViewSet(WorkspaceViewSet):
         else:  # rows from the Android contact picker
             rows = ((r.get("name", ""), r.get("phone", ""), int(r.get("capacity", 1) or 1)) for r in d.get("rows", []))
         existing = set(Invitation.objects.filter(event=self.get_event()).values_list("phone", flat=True))
-        return Response(importers.build_preview(rows, default_country=self.workspace.default_country, existing_phones=existing))
+        try:
+            preview = importers.build_preview(rows, default_country=self.workspace.default_country, existing_phones=existing)
+        except importers.ImportError_ as exc:
+            return Response({"code": exc.code, "detail": str(exc), "headings": exc.headings}, status=422)
+        return Response(preview)
 
     @action(detail=False, methods=["post"], url_path="import/commit")
     def import_commit(self, request, *args, **kwargs):

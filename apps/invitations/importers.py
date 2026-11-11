@@ -12,6 +12,15 @@ import vobject
 from .phones import PhoneError, normalise, pretty
 
 
+class ImportError_(ValueError):
+    """A whole-file problem, as opposed to a bad row. `code` is stable for the UI."""
+
+    def __init__(self, code: str, message: str, headings: list[str] | None = None):
+        super().__init__(message)
+        self.code = code
+        self.headings = headings or []
+
+
 def parse_pasted(text: str):
     """One guest per line: 'Name, phone' or 'Name phone' or 'phone Name'. Optional trailing capacity."""
     for line in text.splitlines():
@@ -49,7 +58,10 @@ def parse_xlsx(data: bytes):
     """First sheet of an Excel workbook. Phone cells typed as numbers come back as digits, not floats."""
     from openpyxl import load_workbook
 
-    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    try:
+        wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    except Exception as exc:  # noqa: BLE001
+        raise ImportError_("unreadable", "That file is not a spreadsheet we can open. Save it as .xlsx and try again.") from exc
     ws = wb.worksheets[0]
     rows = []
     for r in ws.iter_rows(values_only=True):
@@ -59,8 +71,12 @@ def parse_xlsx(data: bytes):
 
 
 def _parse_table(rows: list[list[str]]):
+    rows = [r for r in rows if any(str(c).strip() for c in r)]
     if not rows:
-        return
+        raise ImportError_("empty", "The file has no rows. Fill in the template and upload it again.")
+    if not any(re.search(r"\d{6,}", str(c).replace(" ", "")) for r in rows[:50] for c in r):
+        heads = [str(h).strip() for h in rows[0] if str(h).strip()]
+        raise ImportError_("no_phone_column", "We could not find a column of phone numbers.", headings=heads)
     header = [h.strip().lower() for h in rows[0]]
     has_header = any(h in ("name", "phone", "number", "mobile", "capacity", "admits", "people") for h in header)
     if has_header:
