@@ -23,9 +23,9 @@ function Card({ step, title, sub, hero, children, next, onNext, nextDisabled, ne
       <div className="ob-wrap">
       <img className="ob-blob" src="/illustrations/blob.png" alt="" onError={(e) => (e.currentTarget.style.display = "none")} />
       <div className="ob-card">
-        <div className="ob-head">{hero && <Illustration name={hero} size={120} />}{step && <div className="step">{step}</div>}<h1 className="display-xl">{title}</h1>{sub && <p className="sub">{sub}</p>}</div>
+        <div className="ob-head">{hero && <Illustration name={hero} size={96} />}{step && <div className="step">{step}</div>}<h1 className="display-xl">{title}</h1>{sub && <p className="sub">{sub}</p>}</div>
         {children}
-        {next && <Button variant="primary" size="xl" block onClick={onNext} disabled={nextDisabled} loading={nextLoading}>{next} <Chevron /></Button>}
+        {next && <Button variant="primary" size="lg" block onClick={onNext} disabled={nextDisabled} loading={nextLoading}>{next}</Button>}
         {back && <button className="ob-later" onClick={back}>Previous step</button>}
         {later && <button className="ob-later" onClick={later}>Save and finish later</button>}
       </div>
@@ -62,7 +62,7 @@ function Step1({ onDone, later }: { onDone: (id: number) => void; later: () => v
       <div className="ob-grid">
         {kinds.map(([k, t, d, ill]) => (
           <button key={k} type="button" className={`choice ${kind === k ? "on" : ""}`} onClick={() => setKind(k)}>
-            <div className="top"><Illustration name={ill} size={80} /><span className={`radio ${kind === k ? "on" : ""}`} /></div>
+            <div className="top"><Illustration name={ill} size={56} /><span className={`radio ${kind === k ? "on" : ""}`} /></div>
             <span className="title">{t}</span><span className="desc">{d}</span>
           </button>
         ))}
@@ -112,7 +112,7 @@ function Step5({ onDone, back, later }: { onDone: () => void; back: () => void; 
   return (
     <Card step="Step 5 of 6" title="Who is coming?" sub="Add a few to get going. You can bring in the full list any time after setup." next={count ? `Continue with ${count} guest${count === 1 ? "" : "s"}` : "Continue"} onNext={onDone} back={back} later={later}>
       <div className="ob-grid three">
-        {routes.map(([ill, t, d]) => <button key={t} type="button" className="choice" onClick={() => setImporting(true)}><div className="top"><Illustration name={ill} size={84} /></div><span className="title">{t}</span><span className="desc">{d}</span></button>)}
+        {routes.map(([ill, t, d]) => <button key={t} type="button" className="choice" onClick={() => setImporting(true)}><div className="top"><Illustration name={ill} size={56} /></div><span className="title">{t}</span><span className="desc">{d}</span></button>)}
       </div>
       <div className="row" style={{ width: "100%", justifyContent: "center", gap: 10, fontSize: 13 }}><span className="muted">Have a list in Excel? Fill in the template and upload it.</span><TemplateDownload /></div>
       {count > 0 && (
