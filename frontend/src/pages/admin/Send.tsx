@@ -65,7 +65,7 @@ export default function Send() {
   }
 
   return (
-    <div className="split" style={{ gridTemplateColumns: "1fr 320px" }}>
+    <div className="split split-aside">
       <div className="stack" style={{ gap: 16 }}>
         <div><h3>Send invitations</h3><p className="muted">Each guest gets one SMS with their personal link. Nothing is sent until you press the button.</p></div>
         <div className="stack" style={{ gap: 8 }}>

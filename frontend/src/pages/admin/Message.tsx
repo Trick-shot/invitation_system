@@ -25,7 +25,7 @@ export default function Message() {
   const seg = segments(body.replace("{name}", "Amina Hassan").replace("{link}", "https://trickshot.tech/i/x7k2mq9f").replace("{event}", "Moses Nyoni Communion"));
   const preview = body.replace("{name}", "Amina").replace("{link}", "trickshot.tech/i/x7k2mq9f").replace("{event}", "Moses Nyoni Communion");
   return (
-    <div className="split" style={{ gridTemplateColumns: "1fr 300px" }}>
+    <div className="split split-aside">
       <div className="stack" style={{ gap: 16 }}>
         <div><h3>What will guests receive?</h3><p className="muted">We started you off based on the kind of event. Change any of it.</p></div>
         <Field error={err}><textarea ref={ta} className="input" rows={7} value={body} onChange={(e) => setBody(e.target.value)} style={{ borderColor: "var(--border-accent)", fontSize: 15 }} /></Field>

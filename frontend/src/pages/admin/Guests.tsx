@@ -38,14 +38,26 @@ export default function Guests() {
           {([["", "All"], ["not_arrived", "Not arrived"], ["failed", "Failed"], ["not_sent", "Not sent"]] as [Filter, string][]).map(([f, l]) => <Chip key={f} on={filter === f} onClick={() => { setParams(f ? { filter: f } : {}); setPage(1); }}>{l}</Chip>)}
         </div>
         <div className="grow" />
-        <Button onClick={() => setImporting(true)}>Import</Button>
-        <Button variant="primary" onClick={() => setAdding(true)}>Add guest</Button>
+        <div className="d-only row" style={{ gap: 8 }}><Button onClick={() => setImporting(true)}>Import</Button><Button variant="primary" onClick={() => setAdding(true)}>Add guest</Button></div>
       </div>
+      <div className="m-actions"><Button size="lg" onClick={() => setImporting(true)}>Import</Button><Button size="lg" variant="primary" onClick={() => setAdding(true)}>Add guest</Button></div>
       {empty ? (
         <div className="panel"><Empty illustration="address-book" title="No guests yet" action={<div className="row"><Button onClick={() => setImporting(true)}>Import a list</Button><Button variant="primary" onClick={() => setAdding(true)}>Add one by hand</Button></div>}>Bring them in from your phone, a pasted list, or a file. We check every number before anything is sent.</Empty></div>
       ) : (
         <div className="panel">
-          <table className="table">
+          <div className="m-list">
+            {(list.data?.results ?? []).map((g) => (
+              <div key={g.id} className="m-guest" onClick={() => setRemoving(g)} role="button">
+                <Avatar initials={g.initials} />
+                <div className="grow" style={{ minWidth: 0 }}><div className="m-name">{g.name}</div><div className="num quiet" style={{ fontSize: 13 }}>{g.phone_display}</div></div>
+                <div className="stack" style={{ gap: 6, alignItems: "flex-end" }}>
+                  {g.last_delivery ? <Badge tone={g.last_delivery.status === "failed" ? "danger" : g.last_delivery.status === "delivered" ? "success" : "neutral"} dot>{{ queued: "Queued", sent: "Sent", delivered: "Delivered", failed: "Failed" }[g.last_delivery.status]}</Badge> : <Badge dot>Not sent</Badge>}
+                  <div className="row" style={{ gap: 8 }}><div style={{ width: 40 }}><Track value={g.admitted_count} max={g.capacity} tone={g.admitted_count === g.capacity ? "ok" : undefined} /></div><span className="mono" style={{ fontSize: 13, color: g.admitted_count === g.capacity ? "var(--success-text)" : undefined }}>{g.admitted_count} of {g.capacity}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <table className="table d-only">
             <thead><tr><th>Guest</th><th>Phone</th><th>Admits</th><th>Card</th><th>Delivery</th><th>Arrivals</th><th /></tr></thead>
             <tbody>
               {(list.data?.results ?? []).map((g) => (

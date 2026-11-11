@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { api, ws } from "../../api/client";
 import type { Event } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
@@ -16,6 +18,8 @@ export const Icon = {
   filter: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 3.5h12l-4.5 5.5v4l-3-1.5V9z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>,
   check: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 9.5l3.5 3.5L14 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   x: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>,
+  menu: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>,
+  back: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   share: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="3.5" r="1.8" stroke="currentColor" strokeWidth="1.4" /><circle cx="4" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.4" /><circle cx="12" cy="12.5" r="1.8" stroke="currentColor" strokeWidth="1.4" /><path d="M5.6 7.2l4.8-2.8M5.6 8.8l4.8 2.8" stroke="currentColor" strokeWidth="1.4" /></svg>,
 };
 
@@ -36,11 +40,16 @@ export default function Shell() {
   if (!workspace) return <Navigate to="/" replace />;
   if (role === "door_staff") return <Navigate to="/scan" replace />;
   const current = eventId ? events.data?.results.find((e) => String(e.id) === eventId) : undefined;
+  const { pathname } = useLocation();
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => { setDrawer(false); }, [pathname]);
   const season = events.data ? `${events.data.results.length} event${events.data.results.length === 1 ? "" : "s"} this season` : "";
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <AnimatePresence>{drawer && <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onClick={() => setDrawer(false)} />}</AnimatePresence>
+      <aside className={`sidebar ${drawer ? "open" : ""}`}>
+        <button className="drawer-close btn btn-ghost btn-sm" onClick={() => setDrawer(false)} aria-label="Close menu">{Icon.x}</button>
         <div className="brand"><Logo /><span>{workspace.name}<small>Workspace</small></span></div>
         <button className="switcher" onClick={() => nav(`/app/${slug}`)} title="All events">
           {current ? <CardThumb width={24} /> : <CardStack />}
@@ -59,15 +68,22 @@ export default function Shell() {
         </div>
       </aside>
       <div className="main">
-        <PageTransition><Outlet context={{ events: events.data?.results ?? [], refetchEvents: events.refetch }} /></PageTransition>
+        <PageTransition depth={4}><Outlet context={{ events: events.data?.results ?? [], refetchEvents: events.refetch, openMenu: () => setDrawer(true) }} /></PageTransition>
       </div>
     </div>
   );
 }
 
-export function Topbar({ crumbs, right, searchPlaceholder, onSearch }: { crumbs: (string | { to: string; label: string })[]; right?: React.ReactNode; searchPlaceholder?: string; onSearch?: (q: string) => void }) {
+export function Topbar({ crumbs, right, searchPlaceholder, onSearch, title, sub, back }: { crumbs: (string | { to: string; label: string })[]; right?: React.ReactNode; searchPlaceholder?: string; onSearch?: (q: string) => void; title?: string; sub?: string; back?: string }) {
+  const ctx = useOutletContext<{ openMenu?: () => void } | undefined>();
+  const nav = useNavigate();
   return (
     <div className="topbar">
+      <div className="m-bar">
+        {back ? <button className="m-btn" aria-label="Back" onClick={() => nav(back)}>{Icon.back}</button> : <span style={{ width: 4 }} />}
+        <div className="grow" style={{ minWidth: 0 }}><div className="m-title">{title ?? (typeof crumbs[crumbs.length - 1] === "string" ? (crumbs[crumbs.length - 1] as string) : (crumbs[crumbs.length - 1] as { label: string }).label)}</div>{sub && <div className="m-sub">{sub}</div>}</div>
+        <button className="m-btn" aria-label="Menu" onClick={() => ctx?.openMenu?.()}>{Icon.menu}</button>
+      </div>
       <div className="crumbs">
         {crumbs.map((c, i) => (
           <span key={i} className="row" style={{ gap: 8 }}>

@@ -108,12 +108,11 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.55; }
 
 /* Rows and cards settle in one after another; one rule, every list. */
 @media (prefers-reduced-motion: no-preference) {
-  .table tbody tr, .event-card, .readiness > * { animation: row-in .38s cubic-bezier(.22,1,.36,1) both; }
+  .table tbody tr, .event-card { animation: row-in .38s cubic-bezier(.22,1,.36,1) both; }
   .table tbody tr:nth-child(1), .event-card:nth-child(1) { animation-delay: .03s } .table tbody tr:nth-child(2), .event-card:nth-child(2) { animation-delay: .06s }
   .table tbody tr:nth-child(3), .event-card:nth-child(3) { animation-delay: .09s } .table tbody tr:nth-child(4), .event-card:nth-child(4) { animation-delay: .12s }
   .table tbody tr:nth-child(5), .event-card:nth-child(5) { animation-delay: .15s } .table tbody tr:nth-child(6), .event-card:nth-child(6) { animation-delay: .18s }
   .table tbody tr:nth-child(7) { animation-delay: .21s } .table tbody tr:nth-child(8) { animation-delay: .24s } .table tbody tr:nth-child(n+9) { animation-delay: .27s }
-  .readiness > :nth-child(2) { animation-delay: .05s } .readiness > :nth-child(3) { animation-delay: .1s } .readiness > :nth-child(4) { animation-delay: .15s } .readiness > :nth-child(5) { animation-delay: .2s }
 }
 @keyframes row-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .btn { transition: background .15s, border-color .15s, transform .12s; } .btn:active { transform: scale(.985); }

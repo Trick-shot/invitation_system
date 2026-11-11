@@ -8,12 +8,15 @@ export const EASE = [0.22, 1, 0.36, 1] as const;
  * Wrap an <Outlet/> with this: each route change fades the old page out and
  * rises the new one in. Keyed on the pathname so tab switches animate too.
  */
-export function PageTransition({ children }: { children: ReactNode }) {
+export function PageTransition({ children, depth }: { children: ReactNode; depth?: number }) {
   const { pathname } = useLocation();
   const reduce = useReducedMotion();
+  // `depth` limits the key to the first N path segments, so a layout that owns
+  // nested routes (the event page with its tabs) is not remounted on every tab change.
+  const key = depth ? pathname.split("/").slice(0, depth + 1).join("/") : pathname;
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={pathname} style={{ display: "contents" }}
+      <motion.div key={key} style={{ display: "contents" }}
         initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -4 }}
         transition={{ duration: 0.22, ease: EASE }}>
         {children}

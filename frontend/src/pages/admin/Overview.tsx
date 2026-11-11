@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, ev } from "../../api/client";
@@ -74,7 +74,11 @@ export default function Overview() {
 
 function ArrivalsChart({ data }: { data: Dashboard["arrivals_by_hour"] }) {
   const [hover, setHover] = useState<number | null>(null);
-  const W = 1000, H = 230, L = 36, R = 16, T = 16, B = 28;
+  // Draw at the container's real pixel width so text and strokes are never stretched.
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(1000);
+  useEffect(() => { const el = box.current; if (!el) return; const ro = new ResizeObserver(() => setW(Math.max(280, el.clientWidth))); ro.observe(el); return () => ro.disconnect(); }, []);
+  const H = W < 500 ? 180 : 230, L = 36, R = 16, T = 16, B = 28;
   const points = data.length ? data : [];
   const max = Math.max(10, ...points.map((p) => p.count));
   const px = (i: number) => L + (points.length > 1 ? (i * (W - L - R)) / (points.length - 1) : (W - L - R) / 2);
@@ -88,8 +92,8 @@ function ArrivalsChart({ data }: { data: Dashboard["arrivals_by_hour"] }) {
         <div><h4>Arrivals through the evening</h4><p className="quiet" style={{ fontSize: 13 }}>Scans per hour, both gates. Hover a point for the exact count.</p></div>
         <span className="row" style={{ fontSize: 12, color: "var(--text-secondary)" }}><span style={{ width: 8, height: 8, borderRadius: 4, background: "var(--accent)" }} /> Tonight</span>
       </div>
-      <div className="chart" style={{ marginTop: 12 }} onMouseLeave={() => setHover(null)}>
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      <div ref={box} className="chart" style={{ marginTop: 12, height: H }} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}>
           {ticks.map((t) => <g key={t}><line x1={L} x2={W - R} y1={py(t)} y2={py(t)} stroke={t === 0 ? "var(--border-default)" : "var(--border-subtle)"} /><text x={L - 8} y={py(t) + 4} fontSize="11" textAnchor="end" fill="var(--text-tertiary)">{t}</text></g>)}
           {points.length === 0 && <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="13" fill="var(--text-tertiary)">Arrivals will draw here once the doors open.</text>}
           {area && <path d={area} fill="var(--bg-accent-subtle)" />}

@@ -20,7 +20,8 @@ export default function EventLayout() {
   const status = event?.status === "open" ? <Badge tone="success" dot>Doors open</Badge> : event?.status === "closed" ? <Badge dot>Closed</Badge> : <Badge dot>Draft</Badge>;
   return (
     <>
-      <Topbar crumbs={[{ to: `/app/${slug}`, label: "Events" }, event?.name ?? "…"]} searchPlaceholder="Search guests, phone or card number" right={status} />
+      <Topbar crumbs={[{ to: `/app/${slug}`, label: "Events" }, event?.name ?? "…"]} searchPlaceholder="Search guests, phone or card number" right={status}
+        title={event?.name ?? "…"} sub={event ? `${fmtDate(event.date, true)}${event.venue ? `, ${event.venue}` : ""}` : undefined} back={`/app/${slug}`} />
       <div className="content" style={{ paddingBottom: 0, gap: 16 }}>
         {isLoading || !event ? (
           <div className="stack"><div className="skeleton" style={{ height: 36, width: 380 }} /><div className="skeleton" style={{ height: 62 }} /></div>

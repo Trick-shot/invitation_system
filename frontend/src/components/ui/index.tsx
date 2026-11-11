@@ -173,7 +173,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export const useToast = () => useContext(ToastCtx);
 
 /* ---------- helpers ---------- */
-export const fmtDate = (iso: string) => new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+export const fmtDate = (iso: string, short = false) => new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-GB", short ? { day: "numeric", month: "short" } : { day: "numeric", month: "long", year: "numeric" });
 export const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 export const relTime = (iso: string) => {
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
