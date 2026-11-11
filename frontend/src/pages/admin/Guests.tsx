@@ -40,7 +40,7 @@ export default function Guests() {
         <div className="grow" />
         <div className="d-only row" style={{ gap: 8 }}><Button onClick={() => setImporting(true)}>Import</Button><Button variant="primary" onClick={() => setAdding(true)}>Add guest</Button></div>
       </div>
-      <div className="m-actions"><Button size="lg" onClick={() => setImporting(true)}>Import</Button><Button size="lg" variant="primary" onClick={() => setAdding(true)}>Add guest</Button></div>
+      {!empty && <div className="m-actions"><Button size="lg" onClick={() => setImporting(true)}>Import</Button><Button size="lg" variant="primary" onClick={() => setAdding(true)}>Add guest</Button></div>}
       {empty ? (
         <div className="panel"><Empty illustration="address-book" title="No guests yet" action={<div className="row"><Button onClick={() => setImporting(true)}>Import a list</Button><Button variant="primary" onClick={() => setAdding(true)}>Add one by hand</Button></div>}>Bring them in from your phone, a pasted list, or a file. We check every number before anything is sent.</Empty></div>
       ) : (
