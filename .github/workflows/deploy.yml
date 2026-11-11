@@ -1,5 +1,6 @@
 # Auto-deploy on push to v2 once these repo secrets exist:
 #   DEPLOY_HOST (server IP or hostname), DEPLOY_USER (a sudo user), DEPLOY_SSH_KEY (its private key)
+# Without them the job runs but every step is skipped, so the run stays green.
 name: Deploy
 on:
   push:
@@ -7,10 +8,16 @@ on:
   workflow_dispatch:
 jobs:
   deploy:
-    if: ${{ secrets.DEPLOY_HOST != '' }}
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
     steps:
-      - uses: appleboy/ssh-action@v1.2.0
+      - name: Skip when no server is configured
+        if: env.DEPLOY_HOST == ''
+        run: echo "DEPLOY_HOST secret not set; nothing to deploy."
+      - name: Update the server
+        if: env.DEPLOY_HOST != ''
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}

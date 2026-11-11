@@ -14,6 +14,12 @@ from apps.tenancy.models import Membership, Workspace
 
 
 @pytest.fixture(autouse=True)
+def no_ssl_redirect(settings):
+    # Production forces https; the test client speaks plain http and would get 301s.
+    settings.SECURE_SSL_REDIRECT = False
+
+
+@pytest.fixture(autouse=True)
 def run_on_commit_now(monkeypatch, settings):
     """Tests run inside a transaction, so on_commit hooks would never fire. Run them inline."""
     monkeypatch.setattr(transaction, "on_commit", lambda fn, using=None, robust=False: fn())
