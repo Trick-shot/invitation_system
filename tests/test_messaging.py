@@ -44,3 +44,14 @@ def test_beem_5xx_is_transient():
     responses.post(URL, body="gateway down", status=502)
     with pytest.raises(ProviderTransientError):
         provider().send(to="+255766719100", body="x", reference="d1")
+
+
+@responses.activate
+def test_beem_nested_rejection_reason_is_surfaced():
+    responses.post(
+        URL,
+        status=400,
+        json={"data": {"error_code": "API_INVALID_PARAMETER", "message": "Invalid Sender ID.", "status_code": 400, "context": {"field": "sender_id"}}},
+    )
+    with pytest.raises(ProviderError, match=r"Invalid Sender ID\. \[API_INVALID_PARAMETER\]"):
+        provider().send(to="+255766719100", body="x", reference="d1")

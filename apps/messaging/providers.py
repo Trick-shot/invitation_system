@@ -66,6 +66,15 @@ class BeemProvider(BaseProvider):
         digits = "".join(ch for ch in reference if ch.isdigit())[-9:]
         return int(digits) if digits else 1
 
+    @staticmethod
+    def error_message(data: dict) -> str:
+        """Beem's rejections nest the reason: {"data": {"error_code": "...", "message": "Invalid Sender ID.", ...}};
+        older answers put "message" at the top level."""
+        inner = data.get("data") if isinstance(data.get("data"), dict) else {}
+        msg = inner.get("message") or data.get("message") or ""
+        code = inner.get("error_code") or data.get("code")
+        return f"{msg} [{code}]" if msg and code else str(msg or code or "")
+
     def send(self, *, to, body, reference):
         payload = {
             "source_addr": self.sender_id,
@@ -85,7 +94,7 @@ class BeemProvider(BaseProvider):
         except ValueError:
             data = {"text": resp.text[:200]}
         if resp.status_code != 200 or not data.get("successful", resp.status_code == 200):
-            raise ProviderError(data.get("message") or f"Beem rejected the message ({resp.status_code})")
+            raise ProviderError(self.error_message(data) or f"Beem rejected the message ({resp.status_code})")
         return SendResult(provider_message_id=str(data.get("request_id", reference)), accepted=True, raw=data)
 
 
