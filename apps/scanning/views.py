@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import Http404
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
@@ -51,7 +51,8 @@ class ScanEventsView(APIView):
             .filter(workspace_id__in=ws_ids)
             .exclude(status=Event.Status.CLOSED)
             .select_related("workspace")
-            .order_by("date")
+            .annotate(_open=Case(When(status=Event.Status.OPEN, then=Value(0)), default=Value(1), output_field=IntegerField()))
+            .order_by("_open", "date")
         )
         return Response(
             [

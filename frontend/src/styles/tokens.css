@@ -1,0 +1,25 @@
+/* Generated from the Figma variables (Color collection, Light mode). Keep in step with the file. */
+:root {
+  --bg-canvas: #f2f2f0; --bg-base: #ffffff; --bg-surface: #ffffff; --bg-raised: #ffffff; --bg-inset: #f7f7f6; --bg-hover: #f2f2f0; --bg-accent-subtle: #f4f0fb;
+  --text-primary: #16130f; --text-secondary: #44403c; --text-tertiary: #78716c; --text-inverse: #ffffff; --text-accent: #4f3387;
+  --border-subtle: #ececea; --border-default: #e4e4e1; --border-strong: #d2d2ce; --border-accent: #9474d1;
+  --accent: #6341a8; --accent-hover: #4f3387; --accent-on: #ffffff;
+  --action: #d8ee3f; --action-hover: #c9e01f; --action-on: #16130f;
+  --success: #17854d; --success-subtle: #e7f5ed; --success-text: #0f5f38; --success-on: #0c0a09;
+  --danger: #b32a22; --danger-subtle: #fdecea; --danger-text: #b32a22; --danger-on: #fafaf9;
+  --warning: #bc5c1b; --warning-subtle: #fdf1e7; --warning-text: #8f4512;
+  --info: #2f6be0; --info-subtle: #e9f2fb;
+  --verdict-admitted: #17854d; --verdict-admitted-bg: #e7f5ed; --verdict-full: #b32a22; --verdict-full-bg: #fdecea; --verdict-unknown: #bc5c1b; --verdict-unknown-bg: #fdf1e7;
+  --r-sm: 4px; --r-md: 6px; --r-lg: 8px; --r-xl: 12px; --r-2xl: 16px; --r-3xl: 24px; --r-full: 999px;
+  --font-display: "Poppins", system-ui, sans-serif; --font-body: "Plus Jakarta Sans", system-ui, sans-serif; --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --shadow-float: 0 12px 40px rgba(26, 20, 41, 0.06); --shadow-pop: 0 4px 12px rgba(26, 26, 31, 0.1);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.theme-dark {
+  --bg-canvas: #0c0a09; --bg-base: #16130f; --bg-surface: #262220; --bg-raised: #332e2a; --bg-inset: #0c0a09; --bg-hover: #332e2a; --bg-accent-subtle: #2a1b46;
+  --text-primary: #fafaf9; --text-secondary: #a8a29e; --text-tertiary: #9a938d; --text-inverse: #0c0a09; --text-accent: #b59ce1;
+  --border-subtle: #332e2a; --border-default: #44403c; --border-strong: #57534e; --border-accent: #9474d1;
+  --accent: #9474d1; --accent-hover: #b59ce1; --accent-on: #0c0a09;
+  --success: #1fa862; --success-subtle: #08311d; --success-text: #52bc80; --danger: #d93a30; --danger-subtle: #3b0f0c; --danger-text: #e8635a; --warning: #e2762c; --warning-subtle: #3a1c08; --warning-text: #ee9354;
+  --verdict-admitted: #1fa862; --verdict-admitted-bg: #08311d; --verdict-full: #d93a30; --verdict-full-bg: #3b0f0c; --verdict-unknown: #e2762c; --verdict-unknown-bg: #3a1c08;
+}

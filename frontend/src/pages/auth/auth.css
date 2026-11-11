@@ -1,0 +1,7 @@
+.auth-canvas { min-height: 100%; display: grid; place-items: center; padding: 24px; position: relative; overflow: hidden; }
+.auth-wrap { position: relative; width: 100%; max-width: 440px; }
+.auth-card { position: relative; z-index: 1; width: 100%; background: var(--bg-surface); border-radius: var(--r-3xl); padding: 40px 36px; box-shadow: var(--shadow-float); }
+.auth-card .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 8px 0 12px; }
+.auth-card h1 { font-size: 32px; margin-bottom: 20px; }
+.blob { position: absolute; width: 260px; height: 260px; pointer-events: none; mix-blend-mode: multiply; z-index: 0; }
+.blob.hidden { display: none; }

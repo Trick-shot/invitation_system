@@ -38,3 +38,18 @@ ruff check .
 ## API
 
 Base: `/api/`. JWT via `auth/token/`. Workspace routes are `workspaces/<slug>/...` and resolve membership from the signed-in user; a non-member gets 404. See `backend/urls.py`.
+
+## Frontend
+
+React 19, Vite, TypeScript, React Router, TanStack Query, Framer Motion, html5-qrcode. Tokens in `frontend/src/styles/tokens.css` are generated from the Figma variables.
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173, proxies /api and /media to Django on :8000
+npm run build      # dist/, served by Nginx in production
+```
+
+Routes: `/sign-in`, `/set-password/:token`, `/app/:workspace` (events, staff, settings), `/app/:workspace/events/:id/(guests|template|message|staff|send|scans)`, `/app/:workspace/onboarding/...`, `/scan` (door staff PWA), `/i/:token` (guest card), `/platform` (owner).
+
+The 3D illustrations in `frontend/public/illustrations/` are exported from the Figma Assets page. Replace with the IconScout packs listed in `assets-and-motion.md` when ready; file names stay the same.
