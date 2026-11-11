@@ -22,13 +22,30 @@ say() { printf '\n\033[1;35m== %s\033[0m\n' "$*"; }
 say "Packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q git python3 python3-venv python3-pip mysql-server nginx certbot python3-certbot-nginx curl ca-certificates
-if ! command -v node >/dev/null || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y -q nodejs
+apt-get install -y -q git python3 python3-venv python3-pip nginx certbot python3-certbot-nginx curl ca-certificates xz-utils
+# Database: reuse MySQL or MariaDB if one is already running (this box may host other apps);
+# install mysql-server only when there is none.
+if systemctl is-active --quiet mysql || systemctl is-active --quiet mariadb; then
+  echo "Using the database server already running."
+else
+  apt-get install -y -q mysql-server && systemctl enable --now mysql
 fi
+# Node: the build needs 20+. Never replace a system Node another app may depend on;
+# if it is missing or too old, fetch a private Node 20 under /opt/node20 for our build only.
+NODE_MAJOR="$(command -v node >/dev/null && node -v | cut -d. -f1 | tr -d v || echo 0)"
+if [ "${NODE_MAJOR:-0}" -ge 20 ]; then
+  NODE_PATH_PREFIX=""
+else
+  if [ ! -x /opt/node20/bin/node ]; then
+    echo "System Node is ${NODE_MAJOR:-missing}; installing a private Node 20 in /opt/node20 (system Node untouched)."
+    mkdir -p /opt/node20
+    curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz | tar -xJ --strip-components=1 -C /opt/node20
+  fi
+  NODE_PATH_PREFIX="/opt/node20/bin:"
+fi
+echo "NODE_PATH_PREFIX=${NODE_PATH_PREFIX}" > /etc/invitations-build.env
 
 say "MySQL database"
-systemctl enable --now mysql
 DB_PASS_FILE=/root/.invitations-db-pass
 if [ ! -f "$DB_PASS_FILE" ]; then tr -dc 'A-Za-z0-9' </dev/urandom | head -c 28 > "$DB_PASS_FILE"; fi
 DB_PASS="$(cat "$DB_PASS_FILE")"
@@ -87,7 +104,7 @@ sudo -u "$APP_USER" -H bash -c "cd $APP_DIR && .venv/bin/python manage.py migrat
 mkdir -p "$APP_DIR/media" && chown -R "$APP_USER:$APP_USER" "$APP_DIR/media"
 
 say "Frontend build"
-sudo -u "$APP_USER" -H bash -c "cd $APP_DIR/frontend && npm ci --silent --no-audit --no-fund && npm run build --silent"
+sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX}\$PATH; cd $APP_DIR/frontend && npm ci --silent --no-audit --no-fund && npm run build --silent"
 
 say "Services"
 sed "s#/srv/invitations#${APP_DIR}#g" "$APP_DIR/deploy/gunicorn.service" > /etc/systemd/system/invitations.service
@@ -116,7 +133,11 @@ server {
 NG
 fi
 ln -sf /etc/nginx/sites-available/invitations /etc/nginx/sites-enabled/invitations
-rm -f /etc/nginx/sites-enabled/default
+# Remove nginx's stock welcome site only if it is still the stock file; a shared server may
+# have real sites in there, and those are left alone.
+if [ -f /etc/nginx/sites-enabled/default ] && grep -q 'server_name _;' /etc/nginx/sites-enabled/default && ! grep -q 'proxy_pass\|fastcgi_pass' /etc/nginx/sites-enabled/default; then
+  rm -f /etc/nginx/sites-enabled/default
+fi
 nginx -t && systemctl reload nginx
 
 if [ "${SKIP_CERTBOT:-0}" != "1" ]; then
