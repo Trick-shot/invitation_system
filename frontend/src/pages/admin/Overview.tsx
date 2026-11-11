@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, ev } from "../../api/client";
 import type { Dashboard, Invitation, Paginated } from "../../api/types";
-import { Avatar, Stat, Track, fmtTime } from "../../components/ui";
+import { Avatar, Stat, Track, fmtTime, Stagger, Rise } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 
 export default function Overview() {
@@ -15,15 +15,15 @@ export default function Overview() {
   const base = `/app/${slug}/events/${eventId}`;
   return (
     <>
-      <div className="stats">
+      <Stagger className="stats">
         <Stat label="Arrived" value={d.tiles.arrived.value} delta={`+${d.tiles.arrived.last_hour} in the last hour, of ${d.tiles.arrived.of} people expected`} tone="success" active />
         <Stat label="Cards scanned" value={d.tiles.cards_scanned.value} delta={`of ${d.tiles.cards_scanned.of} invitations`} />
         <Stat label="Invitations sent" value={d.tiles.sent.value} delta={`${d.tiles.sent.delivered} delivered, ${d.tiles.sent.failed} failed`} />
         <Stat label="Failed delivery" value={d.tiles.failed.value} delta={d.tiles.failed.value ? <Link to={`${base}/send?filter=failed`}>retry available</Link> : "nothing to retry"} tone={d.tiles.failed.value ? "danger" : "neutral"} />
-      </div>
-      <ArrivalsChart data={d.arrivals_by_hour} />
-      <div className="split">
-        <div className="panel panel-pad">
+      </Stagger>
+      <Rise><ArrivalsChart data={d.arrivals_by_hour} /></Rise>
+      <Stagger className="split">
+        <Rise className="panel panel-pad">
           <h4>From invitation to arrival</h4>
           <p className="quiet" style={{ fontSize: 13 }}>Each drop is a list you can act on. Click a stage to filter the guest list.</p>
           <div style={{ marginTop: 8 }}>
@@ -39,8 +39,8 @@ export default function Overview() {
               );
             })}
           </div>
-        </div>
-        <div className="panel panel-pad">
+        </Rise>
+        <Rise className="panel panel-pad">
           <h4>At the door</h4>
           <div style={{ marginTop: 12 }}>
             {d.door.by_staff.map((s) => <div key={s.name} className="row" style={{ justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border-subtle)" }}><span>{s.name}</span><span className="mono">{s.scans} scans</span></div>)}
@@ -49,9 +49,9 @@ export default function Overview() {
             <div className="row" style={{ justifyContent: "space-between", padding: "10px 0" }}><span>Admitted by name search</span><span className="mono">{d.door.manual_admits}</span></div>
             <Link to={`${base}/scans`} style={{ fontSize: 13 }}>Open the scan log</Link>
           </div>
-        </div>
-      </div>
-      <div className="panel">
+        </Rise>
+      </Stagger>
+      <Rise className="panel">
         <div className="row panel-pad" style={{ justifyContent: "space-between" }}><h4>Latest arrivals</h4><Link to={`${base}/guests`} className="btn btn-secondary btn-sm">All guests</Link></div>
         <table className="table">
           <thead><tr><th>Guest</th><th>Phone</th><th>Sent</th><th>Card opened</th><th>Admitted</th></tr></thead>
@@ -67,7 +67,7 @@ export default function Overview() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Rise>
     </>
   );
 }

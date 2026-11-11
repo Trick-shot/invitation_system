@@ -1,7 +1,9 @@
+export { PageTransition, CountUp, Stagger, Rise, riseIn, EASE } from "./motion";
 export { Loader } from "./Loader";
 export { DoneTick } from "./DoneTick";
 import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { CountUp, riseIn, EASE } from "./motion";
 import { NavLink } from "react-router-dom";
 import "./ui.css";
 
@@ -81,17 +83,18 @@ export function CardStack() {
 /* ---------- Stats ---------- */
 export function Stat({ label, value, delta, tone, active }: { label: string; value: ReactNode; delta?: ReactNode; tone?: "success" | "danger" | "neutral"; active?: boolean }) {
   const color = tone === "success" ? "var(--success-text)" : tone === "danger" ? "var(--danger-text)" : "var(--text-secondary)";
+  const shown = typeof value === "number" ? <CountUp value={value} /> : value;
   return (
-    <div className={`stat ${active ? "active" : ""}`}>
+    <motion.div className={`stat ${active ? "active" : ""}`} variants={riseIn}>
       <div className="kicker">{label}</div>
-      <div className="value">{value}</div>
+      <div className="value">{shown}</div>
       {delta && <div className="delta" style={{ color }}>{delta}</div>}
-    </div>
+    </motion.div>
   );
 }
 export function Track({ value, max, tone }: { value: number; max: number; tone?: "ok" | "bad" }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-  return <div className={`track ${tone ?? ""}`}><i style={{ width: `${pct}%` }} /></div>;
+  return <div className={`track ${tone ?? ""}`}><motion.i initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.7, ease: EASE }} /></div>;
 }
 
 /* ---------- Modal ---------- */
@@ -106,7 +109,7 @@ export function Modal({ open, onClose, title, sub, children, actions, wide }: { 
     <AnimatePresence>
       {open && (
         <motion.div className="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <motion.div className="modal" style={wide ? { maxWidth: 760 } : undefined} role="dialog" aria-modal initial={{ y: 12, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.98 }} transition={{ duration: 0.18 }}>
+          <motion.div className="modal" style={wide ? { maxWidth: 760 } : undefined} role="dialog" aria-modal initial={{ y: 16, scale: 0.97, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 8, scale: 0.98, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}>
             <h2>{title}</h2>
             {sub && <p className="sub">{sub}</p>}
             <div style={{ marginTop: 20 }}>{children}</div>
@@ -122,7 +125,7 @@ export function Modal({ open, onClose, title, sub, children, actions, wide }: { 
 export function Tabs({ items }: { items: { to: string; label: string; end?: boolean }[] }) {
   return (
     <nav className="tabs">
-      {items.map((t) => <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => `tab ${isActive ? "on" : ""}`}>{t.label}</NavLink>)}
+      {items.map((t) => <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => `tab ${isActive ? "on" : ""}`}>{({ isActive }) => <>{t.label}{isActive && <motion.span className="tab-ink" layoutId="tab-ink" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}</>}</NavLink>)}
     </nav>
   );
 }

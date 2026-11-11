@@ -12,10 +12,12 @@ from apps.tenancy.views import WorkspaceScopedMixin
 
 from .invites import consume_invite, invite_member
 from .serializers import (
+    ForgotPasswordSerializer,
     InviteInfoSerializer,
     InviteMemberSerializer,
     MemberSerializer,
     MeSerializer,
+    RegisterSerializer,
     SetPasswordSerializer,
 )
 
@@ -23,6 +25,81 @@ from .serializers import (
 class ThrottledTokenView(TokenObtainPairView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
+
+
+class RegisterView(APIView):
+    """POST email + password: creates the user, a workspace they own, and an admin
+    membership, then returns tokens so the app can sign them straight in."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        ser = RegisterSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from django.db import transaction
+        from django.utils.text import slugify
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        from apps.tenancy.models import Workspace
+
+        from .models import User
+
+        email = ser.validated_data["email"]
+        full_name = ser.validated_data.get("full_name", "")
+        with transaction.atomic():
+            user, _ = User.objects.get_or_create(email=email, defaults={"full_name": full_name})
+            if full_name and not user.full_name:
+                user.full_name = full_name
+            user.set_password(ser.validated_data["password"])
+            user.save()
+            # Invited but never finished set-password: activate what they were invited to
+            # instead of giving them a second, empty workspace.
+            pending = Membership.objects.filter(user=user)
+            if pending.exists():
+                pending.update(is_active=True)
+                ws = pending.select_related("workspace").order_by("id").first().workspace
+                refresh = RefreshToken.for_user(user)
+                return Response(
+                    {"access": str(refresh.access_token), "refresh": str(refresh), "workspace": ws.slug}, status=status.HTTP_201_CREATED
+                )
+            local = email.split("@")[0]
+            display = (full_name.split()[0] if full_name else local).strip()
+            base = slugify(local)[:40] or "workspace"
+            slug, n = base, 2
+            while Workspace.objects.filter(slug=slug).exists():
+                slug, n = f"{base}-{n}", n + 1
+            ws = Workspace.objects.create(slug=slug, name=f"{display}'s workspace")
+            Membership.objects.create(user=user, workspace=ws, role=ADMIN, is_active=True)
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {"access": str(refresh.access_token), "refresh": str(refresh), "workspace": ws.slug}, status=status.HTTP_201_CREATED
+        )
+
+
+class ForgotPasswordView(APIView):
+    """Always answers 200 so the form cannot be used to check which emails exist.
+    When the email has a workspace, a fresh set-password link is sent the same way invites are."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        ser = ForgotPasswordSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from django.utils import timezone
+
+        from .invites import INVITE_TTL, deliver_invite
+        from .models import User
+
+        user = User.objects.filter(email__iexact=User.objects.normalize_email(ser.validated_data["email"])).first()
+        membership = user.memberships.filter(workspace__status="active").order_by("id").first() if user else None
+        if membership:
+            invite = MemberInvite.objects.create(user=user, workspace=membership.workspace, expires_at=timezone.now() + INVITE_TTL)
+            deliver_invite(invite)
+        return Response({"detail": "If that email has an account, a link to set a new password is on its way."})
 
 
 class MeView(APIView):

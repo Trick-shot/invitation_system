@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { api, ApiError, ws } from "../../api/client";
 import type { Event, EventKind } from "../../api/types";
-import { Badge, Button, Chip, Empty, Field, Input, Modal, Track, fmtDate, useToast } from "../../components/ui";
+import { Badge, Button, Chip, Empty, Field, Input, Modal, Track, fmtDate, useToast, CountUp } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 const statusBadge = (s: Event["status"]) => s === "open" ? <Badge tone="success" dot>Doors open</Badge> : s === "draft" ? <Badge dot>Draft</Badge> : <Badge dot>Closed</Badge>;
@@ -40,9 +40,9 @@ export default function Events() {
                   {statusBadge(e.status)}
                 </div>
                 <div className="nums">
-                  <div><div className="kicker">Invitations</div><div className="value">{e.invitation_count}</div></div>
-                  <div><div className="kicker">People expected</div><div className="value">{e.people_expected}</div></div>
-                  <div><div className="kicker">Arrived</div><div className="value">{e.people_arrived}</div></div>
+                  <div><div className="kicker">Invitations</div><div className="value"><CountUp value={e.invitation_count} /></div></div>
+                  <div><div className="kicker">People expected</div><div className="value"><CountUp value={e.people_expected} /></div></div>
+                  <div><div className="kicker">Arrived</div><div className="value"><CountUp value={e.people_arrived} /></div></div>
                 </div>
                 <Track value={e.people_arrived} max={e.people_expected} />
               </div>

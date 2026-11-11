@@ -1,6 +1,6 @@
 export type Role = "admin" | "coordinator" | "door_staff";
 
-export interface WorkspaceBrief { slug: string; name: string; logo: string | null; default_country: string; default_language: string }
+export interface WorkspaceBrief { slug: string; name: string; logo: string | null; default_country: string; default_language: string; event_count: number }
 export interface Me { id: number; email: string; full_name: string; phone: string; initials: string; is_platform_owner: boolean; memberships: { workspace: WorkspaceBrief; role: Role }[] }
 
 export type EventStatus = "draft" | "open" | "closed";

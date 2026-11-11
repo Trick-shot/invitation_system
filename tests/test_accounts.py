@@ -42,3 +42,27 @@ def test_member_of_two_workspaces_sees_both(admin_a, ws_b):
     Membership.objects.create(user=admin_a, workspace=ws_b, role="door_staff", is_active=True)
     me = client_for(admin_a).get("/api/me/")
     assert {m["workspace"]["slug"] for m in me.data["memberships"]} == {"nyoni", "kili"}
+
+
+def test_register_creates_workspace_and_signs_in():
+    client = APIClient()
+    r = client.post("/api/auth/register/", {"email": "new@owner.tz", "password": "long-enough-pass-1"}, content_type="application/json")
+    assert r.status_code == 201, r.content
+    body = r.json()
+    assert body["workspace"] == "new"
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {body['access']}")
+    me = client.get("/api/me/").json()
+    assert me["memberships"][0]["role"] == "admin"
+    assert me["memberships"][0]["workspace"]["event_count"] == 0
+    # same email again is refused
+    r2 = client.post("/api/auth/register/", {"email": "new@owner.tz", "password": "long-enough-pass-1"}, content_type="application/json")
+    assert r2.status_code == 400
+
+
+def test_forgot_password_is_quiet_and_sends_a_link(mailoutbox, admin_a):
+    client = APIClient()
+    r = client.post("/api/auth/forgot/", {"email": "nobody@nowhere.tz"}, content_type="application/json")
+    assert r.status_code == 200 and not mailoutbox
+    r = client.post("/api/auth/forgot/", {"email": admin_a.email}, content_type="application/json")
+    assert r.status_code == 200
+    assert len(mailoutbox) == 1 and "/set-password/" in mailoutbox[0].body

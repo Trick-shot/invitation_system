@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ev } from "../../api/client";
 import type { CardTemplate, Invitation, Paginated } from "../../api/types";
-import { Button, Field, Input, Modal, useToast } from "../../components/ui";
+import { Button, Modal, useToast } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 
 const QR = () => <svg viewBox="0 0 7 7" width="60%" height="60%" fill="var(--text-primary)"><path d="M0 0h3v3H0zM1 1h1v1H1zM4 0h3v3H4zM5 1h1v1H5zM0 4h3v3H0zM1 5h1v1H1zM4 4h1v1H4zM6 4h1v1H6zM5 5h1v1H5zM4 6h1v1H4zM6 6h1v1H6z" /></svg>;
@@ -85,12 +85,13 @@ export default function Template() {
       </div>
       <div className="stack" style={{ gap: 20 }}>
         <div><h3>Put the QR code on your card</h3><p className="muted">Drag the box to where the code should sit. Drag the corner to resize. A real code renders inside it on every card, so what you see is what guests get.</p></div>
-        <div className="row" style={{ alignItems: "flex-start" }}>
-          <Field label="Size"><Input className="mono sm" value={`${Math.round(slot.size * 100)}%`} readOnly /></Field>
-          <Field label="From left"><Input className="mono sm" value={`${Math.round(slot.x * 100)}%`} readOnly /></Field>
-          <Field label="From top"><Input className="mono sm" value={`${Math.round(slot.y * 100)}%`} readOnly /></Field>
-        </div>
-        <p className="quiet" style={{ fontSize: 13 }}>Arrow keys nudge by one pixel. Hold shift for ten. {t && `At this size the code is ${px}px wide${px < 150 ? ", which is on the small side for a phone camera" : ""}.`}</p>
+        {t && (
+          <SlotControls
+            slot={slot} width={t.width} height={t.height}
+            onChange={(next) => { setSlot(next); setDirty(true); }}
+          />
+        )}
+        <p className="quiet" style={{ fontSize: 13 }}>Drag the box, move a slider, or type a number. Arrow keys nudge by one pixel, shift for ten. {t && `At this size the code is ${px}px wide${px < 150 ? ", which is on the small side for a phone camera" : ""}.`}</p>
         <div className="ob-tip" style={{ background: "var(--bg-accent-subtle)", borderRadius: 12, padding: 18 }}>
           <h4 style={{ color: "var(--text-accent)" }}>Check it really scans</h4>
           <p className="muted">Render one finished card at full size, then scan it with your own phone. This is the only honest test.</p>
@@ -109,3 +110,60 @@ export default function Template() {
   );
 }
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+
+/**
+ * Three sliders bound to the same fractions the drag handles use, with a number box
+ * beside each that shows the value in the unit the person chooses (pixels of the real
+ * card, or percent). Typing, sliding and dragging all update each other immediately.
+ */
+function SlotControls({ slot, width, height, onChange }: { slot: { x: number; y: number; size: number }; width: number; height: number; onChange: (s: { x: number; y: number; size: number }) => void }) {
+  const [unit, setUnit] = useState<"px" | "%">("px");
+  // While a box is being typed in, show the raw text; clamping on every keystroke
+  // would turn "300" into 45 → 450 → max. Apply live when in range, clamp on blur.
+  const [draft, setDraft] = useState<{ key: string; text: string } | null>(null);
+  const ar = width / height;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const maxSize = Math.min(1 - slot.x, (1 - slot.y) / ar);
+  const rows: { key: "size" | "x" | "y"; label: string; axis: number; min: number; max: number }[] = [
+    { key: "size", label: "Size", axis: width, min: 0.05, max: Math.max(0.05, maxSize) },
+    { key: "x", label: "From left", axis: width, min: 0, max: 1 - slot.size },
+    { key: "y", label: "From top", axis: height, min: 0, max: 1 - slot.size * ar },
+  ];
+  const toUnit = (frac: number, axis: number) => (unit === "px" ? Math.round(frac * axis) : Math.round(frac * 1000) / 10);
+  const fromUnit = (v: number, axis: number) => (unit === "px" ? v / axis : v / 100);
+  const set = (key: "size" | "x" | "y", frac: number) => {
+    const r = rows.find((x) => x.key === key)!;
+    onChange({ ...slot, [key]: clamp(frac, r.min, r.max) });
+  };
+  return (
+    <div className="stack" style={{ gap: 14 }}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <span className="kicker">Position and size</span>
+        <div className="seg">
+          <button type="button" className={unit === "px" ? "on" : ""} onClick={() => setUnit("px")}>px</button>
+          <button type="button" className={unit === "%" ? "on" : ""} onClick={() => setUnit("%")}>%</button>
+        </div>
+      </div>
+      {rows.map((r) => (
+        <div key={r.key} className="slot-row">
+          <label htmlFor={`slot-${r.key}`}>{r.label}</label>
+          <input id={`slot-${r.key}`} type="range" min={r.min} max={r.max} step={1 / r.axis} value={clamp(slot[r.key], r.min, r.max)}
+            onChange={(e) => set(r.key, Number(e.target.value))} style={{ "--p": `${((slot[r.key] - r.min) / Math.max(1e-6, r.max - r.min)) * 100}%` } as React.CSSProperties} />
+          <div className="slot-num">
+            <input type="number" className="mono" value={draft?.key === r.key ? draft.text : toUnit(slot[r.key], r.axis)} min={toUnit(r.min, r.axis)} max={toUnit(r.max, r.axis)} step={unit === "px" ? 1 : 0.1}
+              onChange={(e) => { setDraft({ key: r.key, text: e.target.value }); const v = Number(e.target.value); const f = fromUnit(v, r.axis); if (e.target.value !== "" && !Number.isNaN(v) && f >= r.min && f <= r.max) set(r.key, f); }}
+              onBlur={(e) => { const v = Number(e.target.value); if (e.target.value !== "" && !Number.isNaN(v)) set(r.key, fromUnit(v, r.axis)); setDraft(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+            <span>{unit}</span>
+          </div>
+        </div>
+      ))}
+      <div className="row" style={{ gap: 6 }}>
+        <Button size="sm" onClick={() => set("x", (1 - slot.size) / 2)}>Centre left to right</Button>
+        <Button size="sm" onClick={() => set("y", (1 - slot.size * ar) / 2)}>Centre top to bottom</Button>
+      </div>
+      <p className="quiet" style={{ fontSize: 12 }}>Card is {width} × {height} px. The code will be {Math.round(slot.size * width)} px square.</p>
+    </div>
+  );
+}

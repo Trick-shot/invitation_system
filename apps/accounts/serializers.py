@@ -12,6 +12,38 @@ class WorkspaceBriefSerializer(serializers.Serializer):
     logo = serializers.ImageField(read_only=True)
     default_country = serializers.CharField()
     default_language = serializers.CharField()
+    event_count = serializers.SerializerMethodField()
+
+    def get_event_count(self, ws):
+        # Event.workspace has related_name="+", so count explicitly; the front end uses
+        # this to send a brand-new admin into onboarding instead of an empty events page.
+        from apps.events.models import Event
+
+        return Event.objects.all_workspaces().filter(workspace=ws).count()
+
+
+class RegisterSerializer(serializers.Serializer):
+    """Self-serve sign up: email + password is enough. The workspace gets a placeholder
+    name from the email and onboarding step 2 asks for the real one."""
+
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    full_name = serializers.CharField(required=False, allow_blank=True, max_length=120)
+
+    def validate_email(self, value):
+        value = User.objects.normalize_email(value)
+        existing = User.objects.filter(email__iexact=value).first()
+        if existing and existing.has_usable_password():
+            raise serializers.ValidationError("That email already has an account. Sign in instead, or reset the password.")
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
 
 class MembershipBriefSerializer(serializers.ModelSerializer):

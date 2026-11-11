@@ -17,6 +17,8 @@ import ScanLog from "./pages/admin/ScanLog";
 import Settings from "./pages/admin/Settings";
 
 const Onboarding = lazy(() => import("./pages/onboarding/Onboarding"));
+const CreateAccount = lazy(() => import("./pages/auth/CreateAccount"));
+const Forgot = lazy(() => import("./pages/auth/Forgot"));
 const Scanner = lazy(() => import("./pages/scanner/Scanner"));
 const Guest = lazy(() => import("./pages/guest/Guest"));
 const Platform = lazy(() => import("./pages/platform/Platform"));
@@ -43,7 +45,8 @@ const NoWorkspace = () => <div className="auth-canvas"><div className="auth-card
 export const router = createBrowserRouter([
   { path: "/", element: <Home />, errorElement: <ErrorPage /> },
   { path: "/sign-in", element: <SignIn /> },
-  { path: "/forgot", element: <div className="auth-canvas"><div className="auth-card"><h1>Reset your password</h1><p className="muted">Ask your workspace admin to resend your invite; it sets a new password.</p></div></div> },
+  { path: "/forgot", element: <Lazy><Forgot /></Lazy> },
+  { path: "/create-account", element: <Lazy><CreateAccount /></Lazy> },
   { path: "/set-password/:token", element: <SetPassword /> },
   { path: "/i/:token", element: <Lazy><Guest /></Lazy> },
   { element: <RequireAuth />, errorElement: <ErrorPage />, children: [

@@ -7,6 +7,7 @@ interface Auth {
   me: Me | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<Me>;
+  register: (email: string, password: string, full_name?: string) => Promise<Me>;
   signOut: () => void;
   refresh: () => Promise<Me | null>;
 }
@@ -35,9 +36,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return m;
   }, []);
 
+  const register = useCallback(async (email: string, password: string, full_name = "") => {
+    const t = await api<{ access: string; refresh: string; workspace: string }>("/api/auth/register/", { method: "POST", body: { email, password, full_name }, auth: false });
+    tokens.set(t.access, t.refresh);
+    const m = await api<Me>("/api/me/");
+    setMe(m);
+    return m;
+  }, []);
+
   const signOut = useCallback(() => { tokens.clear(); setMe(null); qc.clear(); }, [qc]);
 
-  const value = useMemo(() => ({ me, loading, signIn, signOut, refresh }), [me, loading, signIn, signOut, refresh]);
+  const value = useMemo(() => ({ me, loading, signIn, register, signOut, refresh }), [me, loading, signIn, register, signOut, refresh]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -51,5 +60,8 @@ export function useAuth() {
 export function homeFor(me: Me): string {
   if (me.memberships.length === 0) return me.is_platform_owner ? "/platform" : "/no-workspace";
   const admin = me.memberships.find((m) => m.role !== "door_staff");
-  return admin ? `/app/${admin.workspace.slug}` : "/scan";
+  if (!admin) return "/scan";
+  // A workspace with nothing in it yet is a first run: start the guided setup.
+  if (admin.workspace.event_count === 0) return `/app/${admin.workspace.slug}/onboarding/1`;
+  return `/app/${admin.workspace.slug}`;
 }

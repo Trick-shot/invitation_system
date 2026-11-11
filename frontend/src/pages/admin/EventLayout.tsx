@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useParams } from "react-router-dom";
 import { api, ev } from "../../api/client";
 import type { Event } from "../../api/types";
-import { Badge, Button, CardThumb, Tabs, fmtDate } from "../../components/ui";
+import { Badge, Button, CardThumb, Tabs, fmtDate, PageTransition } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 export function useEvent() {
@@ -43,7 +43,7 @@ export default function EventLayout() {
         <Tabs items={tabs} />
       </div>
       <div className="content" style={{ paddingTop: 20 }}>
-        <Outlet />
+        <PageTransition><Outlet /></PageTransition>
       </div>
     </>
   );

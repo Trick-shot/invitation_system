@@ -3,7 +3,7 @@ import { NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router-
 import { api, ws } from "../../api/client";
 import type { Event } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
-import { Avatar, Button, CardStack, CardThumb, Logo } from "../../components/ui";
+import { Avatar, Button, CardStack, CardThumb, Logo, PageTransition } from "../../components/ui";
 import "./admin.css";
 
 export const Icon = {
@@ -59,7 +59,7 @@ export default function Shell() {
         </div>
       </aside>
       <div className="main">
-        <Outlet context={{ events: events.data?.results ?? [], refetchEvents: events.refetch }} />
+        <PageTransition><Outlet context={{ events: events.data?.results ?? [], refetchEvents: events.refetch }} /></PageTransition>
       </div>
     </div>
   );
