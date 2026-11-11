@@ -108,7 +108,7 @@ function Step5({ onDone, back, later }: { onDone: () => void; back: () => void; 
   const [importing, setImporting] = useState(false);
   const list = useQuery({ queryKey: ["invitations", slug, eventId, "ob"], queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page_size=6`) });
   const count = list.data?.count ?? 0;
-  const routes: [string, string, string][] = [["phone-contacts", "From my phone", "Pick guests straight from your contacts. Android only for now."], ["clipboard", "Paste a list", "Names and numbers from WhatsApp or a note. We sort out the format."], ["spreadsheet", "Upload a file", "A .vcf export or a .csv from a spreadsheet."]];
+  const routes: [string, string, string][] = [["phone-contacts", "From my phone", "Pick guests straight from your contacts. Android only for now."], ["clipboard", "Paste a list", "Names and numbers from WhatsApp or a note. We sort out the format."], ["spreadsheet", "Upload a spreadsheet", "Excel, Google Sheets export, .csv or an iPhone .vcf. We read the headings."]];
   return (
     <Card step="Step 5 of 6" title="Who is coming?" sub="Add a few to get going. You can bring in the full list any time after setup." next={count ? `Continue with ${count} guest${count === 1 ? "" : "s"}` : "Continue"} onNext={onDone} back={back} later={later}>
       <div className="ob-grid three">

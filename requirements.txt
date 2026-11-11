@@ -13,3 +13,4 @@ cryptography>=43
 requests>=2.32
 gunicorn>=23
 whitenoise>=6.8
+openpyxl>=3.1

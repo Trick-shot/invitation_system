@@ -42,8 +42,23 @@ def parse_pasted(text: str):
 
 def parse_csv(data: bytes):
     text = data.decode("utf-8-sig", errors="replace")
-    reader = csv.reader(io.StringIO(text))
-    rows = list(reader)
+    yield from _parse_table(list(csv.reader(io.StringIO(text))))
+
+
+def parse_xlsx(data: bytes):
+    """First sheet of an Excel workbook. Phone cells typed as numbers come back as digits, not floats."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    rows = []
+    for r in ws.iter_rows(values_only=True):
+        rows.append(["" if v is None else (str(int(v)) if isinstance(v, float) and v.is_integer() else str(v)) for v in r])
+    wb.close()
+    yield from _parse_table(rows)
+
+
+def _parse_table(rows: list[list[str]]):
     if not rows:
         return
     header = [h.strip().lower() for h in rows[0]]

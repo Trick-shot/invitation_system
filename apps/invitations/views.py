@@ -74,10 +74,17 @@ class InvitationViewSet(WorkspaceViewSet):
         d = ser.validated_data
         if d["source"] == "paste":
             rows = importers.parse_pasted(d.get("text", ""))
-        elif d["source"] == "csv":
+        elif d["source"] in ("csv", "xlsx"):
             if "file" not in d:
-                raise ValidationError({"file": "Upload a .csv file."})
-            rows = importers.parse_csv(d["file"].read())
+                raise ValidationError({"file": "Upload a .csv or .xlsx file."})
+            name = (d["file"].name or "").lower()
+            if name.endswith((".xlsx", ".xlsm")) or d["source"] == "xlsx":
+                try:
+                    rows = importers.parse_xlsx(d["file"].read())
+                except Exception as exc:  # noqa: BLE001
+                    raise ValidationError({"file": f"Could not read that spreadsheet: {exc}"})
+            else:
+                rows = importers.parse_csv(d["file"].read())
         elif d["source"] == "vcard":
             if "file" not in d:
                 raise ValidationError({"file": "Upload a .vcf file."})

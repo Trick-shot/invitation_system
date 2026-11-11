@@ -83,7 +83,7 @@ class InvitationSerializer(serializers.ModelSerializer):
 
 
 class ImportPreviewSerializer(serializers.Serializer):
-    source = serializers.ChoiceField(choices=["paste", "csv", "vcard", "rows"])
+    source = serializers.ChoiceField(choices=["paste", "csv", "xlsx", "vcard", "rows"])
     text = serializers.CharField(required=False, allow_blank=True)
     file = serializers.FileField(required=False)
     rows = serializers.ListField(child=serializers.DictField(), required=False)

@@ -166,3 +166,38 @@ def test_public_link_states(ws_a, event_a, inv_a):
     event_a.status = "closed"
     event_a.save()
     assert c.get(f"/api/i/{inv_a.token}/").data["state"] == "finished"
+
+
+def test_parse_xlsx_with_numeric_phone_cells():
+    import io
+
+    from openpyxl import Workbook
+
+    from apps.invitations.importers import parse_xlsx
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Guest", "Phone number", "Admits"])
+    ws.append(["Amina Hassan", 712345678, 2])  # typed as a number, leading zero lost: the normaliser restores +255
+    ws.append(["Joseph Mwita", "+255 755 111 222", None])
+    ws.append([None, None, None])
+    buf = io.BytesIO()
+    wb.save(buf)
+    rows = list(parse_xlsx(buf.getvalue()))
+    assert rows == [("Amina Hassan", "712345678", 2), ("Joseph Mwita", "+255 755 111 222", 1)]
+
+
+def test_import_preview_accepts_xlsx_upload(api_a, ws_a, event_a):
+    import io
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    wb.active.append(["name", "phone"])
+    wb.active.append(["Grace Kimaro", "0713 909 544"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    f = SimpleUploadedFile("guests.xlsx", buf.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    r = api_a.post(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/preview/", {"source": "csv", "file": f}, format="multipart")
+    assert r.status_code == 200 and r.data["rows"][0]["phone"] == "+255713909544" and r.data["counts"]["ready"] == 1

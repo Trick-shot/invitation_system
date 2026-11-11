@@ -127,7 +127,7 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
       run.mutate({ source: "rows", rows: picked.map((c) => ({ name: c.name?.[0] ?? "", phone: c.tel?.[0] ?? "", capacity: 1 })) });
     } catch { /* user cancelled */ }
   };
-  const onFile = (f?: File) => { if (!f) return; const kind = f.name.toLowerCase().endsWith(".vcf") ? "vcard" : "csv"; run.mutate({ source: kind, file: f }); };
+  const onFile = (f?: File) => { if (!f) return; const n = f.name.toLowerCase(); const kind = n.endsWith(".vcf") ? "vcard" : n.endsWith(".xlsx") || n.endsWith(".xlsm") ? "xlsx" : "csv"; run.mutate({ source: kind, file: f }); };
   const onDrop = (e: DragEvent) => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]); };
   const ready = useMemo(() => preview?.rows.filter((r) => r.status === "ready") ?? [], [preview]);
   const setCap = (i: number, cap: number) => preview && setPreview({ ...preview, rows: preview.rows.map((r, j) => (j === i ? { ...r, capacity: cap } : r)) });
@@ -151,9 +151,9 @@ export function ImportModal({ open, onClose, onDone }: { open: boolean; onClose:
           </>}
           {source === "file" && (
             <label className={`dropzone ${over ? "over" : ""}`} onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
-              <b>Drop a .vcf or .csv here, or click to browse</b>
-              <div className="quiet" style={{ fontSize: 13, marginTop: 4 }}>iPhone: open Contacts, select people, Share, save the .vcf, upload it here. One file holds everyone.</div>
-              <input type="file" accept=".vcf,.csv,text/vcard,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
+              <b>Drop a spreadsheet, .csv or .vcf here, or click to browse</b>
+              <div className="quiet" style={{ fontSize: 13, marginTop: 4 }}>Excel or Google Sheets export: a column for names, one for phone numbers, optionally one for how many people the card admits. Any column order; we read the headings. iPhone: Contacts, select people, Share, save the .vcf.</div>
+              <input type="file" accept=".xlsx,.xlsm,.vcf,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/vcard,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
               {run.isPending && <div className="spinner" style={{ margin: "12px auto 0" }} />}
             </label>
           )}
