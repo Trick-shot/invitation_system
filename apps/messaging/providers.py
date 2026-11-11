@@ -59,13 +59,20 @@ class BeemProvider(BaseProvider):
         self.send_url = send_url or settings.MESSAGING["BEEM_SEND_URL"]
         self.timeout = timeout
 
+    @staticmethod
+    def recipient_id(reference: str) -> int:
+        """Beem wants a numeric recipient_id ("Missing or invalid reference ID." otherwise).
+        Our references are "d<delivery pk>" or a uuid hex; keep the trailing digits."""
+        digits = "".join(ch for ch in reference if ch.isdigit())[-9:]
+        return int(digits) if digits else 1
+
     def send(self, *, to, body, reference):
         payload = {
             "source_addr": self.sender_id,
             "schedule_time": "",
             "encoding": 0,
             "message": body,
-            "recipients": [{"recipient_id": reference, "dest_addr": to.lstrip("+")}],
+            "recipients": [{"recipient_id": self.recipient_id(reference), "dest_addr": to.lstrip("+")}],
         }
         try:
             resp = requests.post(self.send_url, json=payload, auth=self.auth, timeout=self.timeout)
