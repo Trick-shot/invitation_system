@@ -147,9 +147,9 @@
 @media (max-width: 820px) { .m-only { display: flex; } }
 
 /* ---------- Message page: the phone ---------- */
-.msg-layout { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 32px; align-items: start; }
+.msg-layout { display: grid; grid-template-columns: 1fr minmax(280px, 340px); gap: 24px; align-items: start; }
 .phone-stage { display: flex; justify-content: center; }
-.iphone { width: 100%; max-width: 320px; height: 600px; background: #0b0b0d; border-radius: 44px; padding: 10px; box-shadow: 0 0 0 2px #2a2a2e, 0 24px 60px rgba(0,0,0,.25); display: flex; flex-direction: column; color: #f2f2f5; font-family: -apple-system, "SF Pro Text", "Plus Jakarta Sans", system-ui, sans-serif; overflow: hidden; }
+.iphone { width: 100%; max-width: 300px; height: 560px; background: #0b0b0d; border-radius: 44px; padding: 10px; box-shadow: 0 0 0 2px #2a2a2e, 0 24px 60px rgba(0,0,0,.25); display: flex; flex-direction: column; color: #f2f2f5; font-family: -apple-system, "SF Pro Text", "Plus Jakarta Sans", system-ui, sans-serif; overflow: hidden; }
 .iphone-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 18px 4px; font-size: 13px; font-weight: 600; }
 .iphone-island { width: 96px; height: 28px; border-radius: 16px; background: #000; }
 .iphone-status { display: flex; gap: 3px; align-items: flex-end; } .iphone-status i { display: block; width: 3px; background: #f2f2f5; border-radius: 1px; } .iphone-status i:nth-child(1) { height: 5px } .iphone-status i:nth-child(2) { height: 8px } .iphone-status i:nth-child(3) { height: 11px }
@@ -158,14 +158,12 @@
 .iphone-name { font-size: 12px; margin-top: 2px; }
 .iphone-thread { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; overflow: auto; }
 .iphone-date { text-align: center; font-size: 11px; color: #8e8e95; margin-bottom: 6px; }
-.sms-bubble { align-self: flex-start; max-width: 86%; background: #26262b; color: #f2f2f5; border-radius: 18px; border-bottom-left-radius: 6px; padding: 9px 13px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; border: 0; cursor: text; font-family: inherit; transition: background .15s; }
-button.sms-bubble:hover { background: #2e2e34; }
-.sms-edit { width: 86%; resize: none; outline: 0; box-shadow: 0 0 0 2px var(--accent); overflow: hidden; }
+.sms-bubble { align-self: flex-start; max-width: 88%; background: #26262b; color: #f2f2f5; border-radius: 18px; border-bottom-left-radius: 6px; padding: 9px 13px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; }
 .sms-link { color: #5ca3ff; text-decoration: underline; }
 .iphone-seen { font-size: 11px; color: #8e8e95; padding-left: 4px; margin-top: 2px; }
 .iphone-compose { display: flex; align-items: center; gap: 8px; padding: 8px 12px 14px; }
 .iphone-compose span { width: 30px; height: 30px; border-radius: 50%; background: #26262b; display: grid; place-items: center; color: #aaa; }
 .iphone-field { flex: 1; border: 1px solid #333; border-radius: 16px; padding: 6px 12px; font-size: 13px; color: #6c6c74; }
-@media (max-width: 1100px) { .msg-layout { grid-template-columns: 1fr; } .msg-side { max-width: 560px; } }
+@media (max-width: 1100px) { .msg-layout { grid-template-columns: 1fr; } }
 @media (max-width: 820px) { .iphone { height: 520px; max-width: 300px; } }
 @media (max-width: 820px) { .delete-row { flex-direction: column; align-items: stretch !important; } .delete-row .field { width: 100%; } }

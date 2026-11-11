@@ -19,9 +19,9 @@ export default function Events() {
 
   return (
     <>
-      <Topbar crumbs={["Events"]} searchPlaceholder="Search events" right={<Button variant="primary" onClick={() => setOpen(true)}>New event</Button>} />
+      <Topbar crumbs={["Events"]} searchPlaceholder="Search events" />
       <div className="content">
-        <div className="page-head"><div><h1>Events</h1><p className="muted">{workspace?.name} workspace</p></div></div>
+        <div className="page-head"><div><h1>Events</h1><p className="muted">{workspace?.name} workspace</p></div><Button variant="primary" onClick={() => setOpen(true)}>New event</Button></div>
         {events.length > 0 && needsSetup && !dismissed && (
           <div className="banner">
             <div><b>An event still needs its card template</b><div className="muted" style={{ fontSize: 13 }}>Guests cannot receive invitations until the QR slot is placed.</div></div>
