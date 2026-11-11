@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # One-shot server setup for the invitation platform on Ubuntu 22.04/24.04.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Trick-shot/invitation_system/v2/deploy/bootstrap.sh | sudo DOMAIN=test.trickshot.tech OWNER_EMAIL=you@example.com bash
+#   curl -fsSL https://raw.githubusercontent.com/Trick-shot/invitation_system/main/deploy/bootstrap.sh | sudo DOMAIN=test.trickshot.tech OWNER_EMAIL=you@example.com bash
 #
-# Optional env: BRANCH (default v2), BEEM_API_KEY, BEEM_SECRET_KEY, BEEM_SENDER_ID, OWNER_PASSWORD, SEED_DEMO=1 (demo users with a public password: test sites only), SKIP_CERTBOT=1
+# Optional env: BRANCH (default main), BEEM_API_KEY, BEEM_SECRET_KEY, BEEM_SENDER_ID, OWNER_PASSWORD, SEED_DEMO=1 (demo users with a public password: test sites only), SKIP_CERTBOT=1
 # Safe to re-run: it updates in place.
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-test.trickshot.tech}"
-BRANCH="${BRANCH:-v2}"
+BRANCH="${BRANCH:-main}"
 REPO="${REPO:-https://github.com/Trick-shot/invitation_system}"
 APP_DIR="/srv/invitations"
 APP_USER="www-data"

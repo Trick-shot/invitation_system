@@ -1,10 +1,10 @@
-# Auto-deploy on push to v2 once these repo secrets exist:
+# Auto-deploy on push to main once these repo secrets exist:
 #   DEPLOY_HOST (server IP or hostname), DEPLOY_USER (a sudo user), DEPLOY_SSH_KEY (its private key)
 # Without them the job runs but every step is skipped, so the run stays green.
 name: Deploy
 on:
   push:
-    branches: [v2]
+    branches: [main]
   workflow_dispatch:
 jobs:
   deploy:

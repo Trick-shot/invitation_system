@@ -5,15 +5,15 @@
 Point DNS for your domain at the server, then as root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Trick-shot/invitation_system/v2/deploy/bootstrap.sh \
+curl -fsSL https://raw.githubusercontent.com/Trick-shot/invitation_system/main/deploy/bootstrap.sh \
   | sudo DOMAIN=test.trickshot.tech OWNER_EMAIL=you@example.com SEED_DEMO=1 bash
 ```
 
-It installs MySQL, Nginx, Node and Python, clones the `v2` branch into `/srv/invitations`, writes `.env` with generated secrets, migrates, builds the frontend, starts the gunicorn and worker services, gets a Let's Encrypt certificate, creates the platform owner (prints the password once) and, with `SEED_DEMO=1`, loads the demo workspace. Pass `BEEM_API_KEY=... BEEM_SECRET_KEY=... BEEM_SENDER_ID=...` to send real SMS; without them the console provider logs messages instead of sending.
+It installs MySQL, Nginx, Node and Python, clones the `main` branch into `/srv/invitations`, writes `.env` with generated secrets, migrates, builds the frontend, starts the gunicorn and worker services, gets a Let's Encrypt certificate, creates the platform owner (prints the password once) and, with `SEED_DEMO=1`, loads the demo workspace. Pass `BEEM_API_KEY=... BEEM_SECRET_KEY=... BEEM_SENDER_ID=...` to send real SMS; without them the console provider logs messages instead of sending.
 
 Re-running the script is safe; it updates in place and keeps `.env`.
 
-Afterwards: `sudo bash /srv/invitations/deploy/update.sh` pulls and restarts. Add the repo secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and every push to `v2` deploys itself through `.github/workflows/deploy.yml`.
+Afterwards: `sudo bash /srv/invitations/deploy/update.sh` pulls and restarts. Add the repo secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and every push to `main` deploys itself through `.github/workflows/deploy.yml`.
 
 Logs: `journalctl -u invitations -u invitations-q -f`. Beem delivery reports: set the DLR URL in the Beem dashboard to `https://<domain>/api/webhooks/delivery/`.
 
@@ -24,7 +24,7 @@ Ubuntu server, MySQL, Nginx, Gunicorn, django-q worker. Everything lives in `/sr
 ```bash
 sudo apt install python3.12-venv mysql-server nginx certbot python3-certbot-nginx
 sudo mkdir -p /srv/invitations && sudo chown www-data:www-data /srv/invitations
-sudo -u www-data git clone -b v2 https://github.com/Trick-shot/invitation_system /srv/invitations
+sudo -u www-data git clone -b main https://github.com/Trick-shot/invitation_system /srv/invitations
 cd /srv/invitations
 sudo -u www-data python3 -m venv .venv
 sudo -u www-data .venv/bin/pip install -r requirements.txt
