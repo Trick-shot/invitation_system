@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, Field, Input, Modal, Track, useToast } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, Field, Input, Modal, Track, useToast, CapacityPicker } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
 
@@ -102,7 +102,7 @@ export function AddGuestModal({ open, onClose, onAdded }: { open: boolean; onClo
       <form onSubmit={(e) => { e.preventDefault(); if (form.name && form.phone) m.mutate(); }} className="stack" style={{ gap: 14 }}>
         <Field label="Name" error={err?.field("name")}><Input ref={nameRef} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
         <Field label="Phone" hint="Any format. 0712 345 678 becomes +255 712 345 678." error={err?.field("phone")}><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} inputMode="tel" invalid={!!err?.field("phone")} /></Field>
-        <Field label="People on this card"><div className="row" style={{ gap: 6 }}>{[1, 2, 3].map((n) => <Chip key={n} on={form.capacity === n} onClick={() => setForm({ ...form, capacity: n })}>{n} {n === 1 ? "person" : "people"}</Chip>)}</div></Field>
+        <Field label="People on this card" hint="Up to 20. The scanner counts each person in as they arrive."><CapacityPicker value={form.capacity} onChange={(n) => setForm({ ...form, capacity: n })} /></Field>
         <button type="submit" hidden />
       </form>
     </Modal>
@@ -216,7 +216,7 @@ export function ImportModal({ open, onClose, onDone, onNext, nextLabel }: { open
                 <tr key={i} style={{ opacity: r.status === "ready" ? 1 : 0.75 }}>
                   <td>{r.name || <span className="quiet">(no name)</span>}</td>
                   <td className="num">{r.phone_display ?? r.phone_raw}</td>
-                  <td><div className="row" style={{ gap: 4 }}>{[1, 2, 3].map((n) => <button key={n} type="button" className={`chip ${r.capacity === n ? "on" : ""}`} style={{ padding: "2px 8px" }} disabled={r.status !== "ready"} onClick={() => setCap(i, n)}>{n}</button>)}</div></td>
+                  <td>{r.status === "ready" ? <CapacityPicker compact value={r.capacity} onChange={(n) => setCap(i, n)} /> : <span className="mono quiet">{r.capacity}</span>}</td>
                   <td style={{ textAlign: "right" }}>{r.status === "ready" ? <Badge tone="success">Ready</Badge> : r.status === "duplicate" ? <Badge tone="warning">{r.reason}</Badge> : <Badge tone="danger">{r.reason}</Badge>}</td>
                 </tr>
               ))}

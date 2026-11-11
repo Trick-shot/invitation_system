@@ -6,6 +6,10 @@ from django.db import models
 from apps.events.models import Event
 from apps.tenancy.models import WorkspaceOwnedModel
 
+# How many people one card may admit. One number, used by the model, the API,
+# the importers, the Excel template and the front end (frontend/src/api/types.ts).
+MAX_CAPACITY = 20
+
 
 def make_token() -> str:
     # 12 chars of URL-safe base64: 72 bits of entropy, short enough for an SMS.
@@ -27,7 +31,7 @@ class Invitation(WorkspaceOwnedModel):
     name = models.CharField(max_length=120)
     phone = models.CharField(max_length=20, help_text="E.164")
     token = models.CharField(max_length=24, default=make_token, unique=True, editable=False)
-    capacity = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(3)])
+    capacity = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(MAX_CAPACITY)])
     admitted_count = models.PositiveSmallIntegerField(default=0)
     card = models.ImageField(upload_to=card_upload_path, blank=True)
     card_status = models.CharField(max_length=12, choices=CardStatus.choices, default=CardStatus.PENDING)

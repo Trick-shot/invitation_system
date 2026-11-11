@@ -4,6 +4,7 @@ export { DoneTick } from "./DoneTick";
 import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CountUp, riseIn, EASE } from "./motion";
+import { MAX_CAPACITY } from "../../api/types";
 import { NavLink } from "react-router-dom";
 import "./ui.css";
 
@@ -180,3 +181,27 @@ export const relTime = (iso: string) => {
   if (d < 60) return "just now"; if (d < 3600) return `${Math.floor(d / 60)} minutes ago`; if (d < 86400) return `${Math.floor(d / 3600)} hours ago`;
   return `${Math.floor(d / 86400)} days ago`;
 };
+
+
+/**
+ * How many people one card admits. Quick chips for the common sizes, a number box for
+ * larger groups (a family table, a bus of students). Value is always 1..MAX_CAPACITY.
+ */
+export function CapacityPicker({ value, onChange, compact }: { value: number; onChange: (n: number) => void; compact?: boolean }) {
+  const quick = compact ? [1, 2, 3] : [1, 2, 3, 4];
+  const clamp = (n: number) => Math.max(1, Math.min(MAX_CAPACITY, Math.round(n) || 1));
+  // Hold the raw text while typing so "12" is not applied as 1 then 2.
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <div className="row" style={{ gap: 4, flexWrap: "wrap" }}>
+      {quick.map((n) => <button key={n} type="button" className={`chip ${value === n ? "on" : ""}`} style={compact ? { padding: "2px 8px" } : undefined} onClick={() => onChange(n)}>{n}{compact ? "" : n === 1 ? " person" : " people"}</button>)}
+      <label className={`chip cap-more ${value > quick.length ? "on" : ""}`} style={compact ? { padding: "0 6px 0 8px" } : { padding: "0 6px 0 10px" }}>
+        {!compact && <span>More</span>}
+        <input type="number" min={1} max={MAX_CAPACITY} value={draft ?? (value > quick.length ? value : "")} placeholder={compact ? "#" : "5"}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={(e) => { const v = Number(e.target.value); if (e.target.value !== "" && !Number.isNaN(v)) onChange(clamp(v)); setDraft(null); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }} />
+      </label>
+    </div>
+  );
+}

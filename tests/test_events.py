@@ -9,7 +9,9 @@ pytestmark = pytest.mark.django_db
 
 
 def test_create_event_seeds_message_in_workspace_language(api_a, ws_a):
-    r = api_a.post(f"/api/workspaces/{ws_a.slug}/events/", {"name": "Kimaro Wedding", "kind": "wedding", "date": "2027-03-06", "venue": "Kunduchi"})
+    r = api_a.post(
+        f"/api/workspaces/{ws_a.slug}/events/", {"name": "Kimaro Wedding", "kind": "wedding", "date": "2027-03-06", "venue": "Kunduchi"}
+    )
     assert r.status_code == 201
     with workspace_context(ws_a):
         msg = MessageTemplate.objects.get(event_id=r.data["id"])

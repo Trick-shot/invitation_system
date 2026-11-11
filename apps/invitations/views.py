@@ -93,7 +93,9 @@ class InvitationViewSet(WorkspaceViewSet):
             if name.endswith((".xlsx", ".xlsm")) or d["source"] == "xlsx":
                 rows = importers.parse_xlsx(data)
             elif name.endswith(".xls"):
-                raise ValidationError({"code": "old_excel", "detail": "That is an old .xls file. In Excel choose Save As and pick .xlsx, then upload again."})
+                raise ValidationError(
+                    {"code": "old_excel", "detail": "That is an old .xls file. In Excel choose Save As and pick .xlsx, then upload again."}
+                )
             else:
                 rows = importers.parse_csv(data)
         elif d["source"] == "vcard":

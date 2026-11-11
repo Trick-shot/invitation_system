@@ -56,7 +56,24 @@ def test_duplicate_phone_per_event_rejected_but_allowed_across_events(api_a, ws_
 def test_capacity_bounds(api_a, ws_a, event_a):
     url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/"
     assert api_a.post(url, {"name": "A", "phone": "0712000001", "capacity": 0}).status_code == 400
-    assert api_a.post(url, {"name": "A", "phone": "0712000001", "capacity": 4}).status_code == 400
+    assert api_a.post(url, {"name": "A", "phone": "0712000001", "capacity": 21}).status_code == 400
+    assert api_a.post(url, {"name": "A", "phone": "0712000001", "capacity": 12}).status_code == 201
+
+
+def test_import_flags_capacity_over_limit(api_a, ws_a, event_a):
+    url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/preview/"
+    r = api_a.post(
+        url,
+        {
+            "source": "rows",
+            "rows": [{"name": "Bus", "phone": "0712000009", "capacity": 40}, {"name": "Table", "phone": "0712000010", "capacity": 8}],
+        },
+        format="json",
+    )
+    assert r.status_code == 200
+    by = {row["name"]: row for row in r.data["rows"]}
+    assert by["Bus"]["status"] == "needs_attention" and "1 and 20" in by["Bus"]["reason"]
+    assert by["Table"]["status"] == "ready" and by["Table"]["capacity"] == 8
 
 
 def test_parse_pasted_variants():
@@ -199,7 +216,9 @@ def test_import_preview_accepts_xlsx_upload(api_a, ws_a, event_a):
     buf = io.BytesIO()
     wb.save(buf)
     f = SimpleUploadedFile("guests.xlsx", buf.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    r = api_a.post(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/preview/", {"source": "csv", "file": f}, format="multipart")
+    r = api_a.post(
+        f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/import/preview/", {"source": "csv", "file": f}, format="multipart"
+    )
     assert r.status_code == 200 and r.data["rows"][0]["phone"] == "+255713909544" and r.data["counts"]["ready"] == 1
 
 

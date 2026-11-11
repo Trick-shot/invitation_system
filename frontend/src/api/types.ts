@@ -1,3 +1,5 @@
+/** Keep in step with apps/invitations/models.py MAX_CAPACITY. */
+export const MAX_CAPACITY = 20;
 export type Role = "admin" | "coordinator" | "door_staff";
 
 export interface WorkspaceBrief { slug: string; name: string; logo: string | null; default_country: string; default_language: string; event_count: number }

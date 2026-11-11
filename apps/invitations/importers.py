@@ -9,6 +9,7 @@ import re
 
 import vobject
 
+from .models import MAX_CAPACITY
 from .phones import PhoneError, normalise, pretty
 
 
@@ -30,7 +31,7 @@ def parse_pasted(text: str):
         parts = [p.strip() for p in re.split(r"[,\t;]+", line) if p.strip()]
         if len(parts) == 1:
             # Try "Name 0712 345 678" with whitespace only.
-            m = re.match(r"^(.*?)\s*(\+?\d[\d\s\-]{6,}?\d)(?:\s+([123]))?$", line)
+            m = re.match(r"^(.*?)\s*(\+?\d[\d\s\-]{6,}?\d)(?:\s+(\d{1,2}))?$", line)
             if m:
                 parts = [m.group(1).strip(), m.group(2).strip()] + ([m.group(3)] if m.group(3) else [])
             else:
@@ -43,7 +44,7 @@ def parse_pasted(text: str):
         phone = parts[phone_idx]
         rest = [p for i, p in enumerate(parts) if i != phone_idx]
         capacity = 1
-        if rest and rest[-1].isdigit() and 1 <= int(rest[-1]) <= 3:
+        if rest and rest[-1].isdigit() and len(rest[-1]) <= 2 and len(rest) > 1:
             capacity = int(rest.pop())
         name = " ".join(rest).strip()
         yield name, phone, capacity
@@ -93,7 +94,7 @@ def _parse_table(rows: list[list[str]]):
         phone = r[phone_i].strip() if len(r) > phone_i else ""
         cap = 1
         if cap_i is not None and len(r) > cap_i and r[cap_i].strip().isdigit():
-            cap = max(1, min(3, int(r[cap_i])))
+            cap = int(r[cap_i])
         yield name, phone, cap
 
 
@@ -136,6 +137,8 @@ def build_preview(rows, *, default_country: str, existing_phones: set[str]) -> d
             seen.add(e164)
         if row["status"] == "ready" and not row["name"]:
             row.update(status="needs_attention", reason="No name")
+        if row["status"] == "ready" and not (1 <= int(capacity) <= MAX_CAPACITY):
+            row.update(status="needs_attention", reason=f"Admits must be between 1 and {MAX_CAPACITY}")
         counts[row["status"]] += 1
         out.append(row)
     return {"rows": out, "counts": counts, "found": len(out)}

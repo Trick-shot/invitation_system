@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Delivery, Invitation
+from .models import MAX_CAPACITY, Delivery, Invitation
 from .phones import PhoneError, normalise, pretty
 
 
@@ -92,7 +92,7 @@ class ImportPreviewSerializer(serializers.Serializer):
 class ImportCommitRowSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
     phone = serializers.CharField(max_length=20)
-    capacity = serializers.IntegerField(min_value=1, max_value=3, default=1)
+    capacity = serializers.IntegerField(min_value=1, max_value=MAX_CAPACITY, default=1)
 
 
 class ImportCommitSerializer(serializers.Serializer):
