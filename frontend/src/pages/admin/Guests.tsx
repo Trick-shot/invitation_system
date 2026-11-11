@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, Empty, Field, Illustration, Input, Modal, Track, useToast } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, Field, Input, Modal, Track, useToast } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
 
@@ -107,6 +107,7 @@ export function ImportModal({ open, onClose, onDone, onNext, nextLabel }: { open
   const [fileError, setFileError] = useState<{ code: string; detail: string; headings?: string[] } | null>(null);
   const [done, setDone] = useState<{ created: number; skipped: number; leftBehind: number } | null>(null);
   const [over, setOver] = useState(false);
+  const [fileName, setFileName] = useState("");
   const toast = useToast();
   const base = `${ev(slug, eventId)}/invitations/import/`;
   const run = useMutation({
@@ -131,7 +132,7 @@ export function ImportModal({ open, onClose, onDone, onNext, nextLabel }: { open
       run.mutate({ source: "rows", rows: picked.map((c) => ({ name: c.name?.[0] ?? "", phone: c.tel?.[0] ?? "", capacity: 1 })) });
     } catch { /* user cancelled */ }
   };
-  const onFile = (f?: File) => { if (!f) return; const n = f.name.toLowerCase(); const kind = n.endsWith(".vcf") ? "vcard" : n.endsWith(".xlsx") || n.endsWith(".xlsm") ? "xlsx" : "csv"; run.mutate({ source: kind, file: f }); };
+  const onFile = (f?: File) => { if (!f) return; setFileName(f.name); const n = f.name.toLowerCase(); const kind = n.endsWith(".vcf") ? "vcard" : n.endsWith(".xlsx") || n.endsWith(".xlsm") ? "xlsx" : "csv"; run.mutate({ source: kind, file: f }); };
   const onDrop = (e: DragEvent) => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]); };
   const ready = useMemo(() => preview?.rows.filter((r) => r.status === "ready") ?? [], [preview]);
   const setCap = (i: number, cap: number) => preview && setPreview({ ...preview, rows: preview.rows.map((r, j) => (j === i ? { ...r, capacity: cap } : r)) });
@@ -141,7 +142,7 @@ export function ImportModal({ open, onClose, onDone, onNext, nextLabel }: { open
       actions={done ? <><Button variant="ghost" onClick={close}>Back to guests</Button>{onNext && <Button variant="primary" onClick={() => { close(); onNext(); }}>{nextLabel ?? "Send invitations"}</Button>}</> : preview ? <><Button variant="ghost" onClick={() => setPreview(null)}>Fix the file and upload again</Button><Button variant="ink" loading={commit.isPending} disabled={!ready.length} onClick={() => commit.mutate(ready)}>{ready.length ? `Add ${ready.length} guest${ready.length === 1 ? "" : "s"}` : "Nothing to add"}</Button></> : <Button variant="ghost" onClick={close}>Cancel</Button>}>
       {done ? (
         <div className="empty" style={{ padding: "8px 0 0" }}>
-          <Illustration name="check-badge" size={160} />
+          <DoneTick size={128} />
           <p className="muted" style={{ maxWidth: 420 }}>
             Each guest now has a card with their own QR code. Nothing has been sent yet.
             {done.skipped > 0 && <> {done.skipped} row{done.skipped === 1 ? " was" : "s were"} skipped because the number was already on the list.</>}
@@ -177,12 +178,15 @@ export function ImportModal({ open, onClose, onDone, onNext, nextLabel }: { open
               <span style={{ fontSize: 13 }}><b>Start from the template.</b> <span className="muted">Three columns: Name, Phone, Admits. Fill it in Excel or Google Sheets and upload it here.</span></span>
               <TemplateDownload />
             </div>
+            {run.isPending ? (
+              <div className="dropzone" style={{ cursor: "default" }}><Loader label={`Reading ${fileName || "your file"}`} sub="Checking every phone number before anything is saved." /></div>
+            ) : (
             <label className={`dropzone ${over ? "over" : ""}`} onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
               <b>Drop a spreadsheet, .csv or .vcf here, or click to browse</b>
               <div className="quiet" style={{ fontSize: 13, marginTop: 4 }}>Excel or Google Sheets export: a column for names, one for phone numbers, optionally one for how many people the card admits. Any column order; we read the headings. iPhone: Contacts, select people, Share, save the .vcf.</div>
               <input type="file" accept=".xlsx,.xlsm,.vcf,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/vcard,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
-              {run.isPending && <div className="spinner" style={{ margin: "12px auto 0" }} />}
             </label>
+            )}
           </>)}
         </div>
       ) : (

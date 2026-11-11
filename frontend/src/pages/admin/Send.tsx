@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { Dashboard, Invitation, MessageTemplate, Paginated, SendProgress } from "../../api/types";
-import { Badge, Button, Illustration, Track, useToast } from "../../components/ui";
+import { Badge, Button, Track, useToast, DoneTick } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { segments } from "./Message";
 
@@ -42,7 +42,7 @@ export default function Send() {
     return (
       <>
         <div className="panel panel-pad stack" style={{ gap: 14 }}>
-          <h3>{phase === "sending" ? `Sending ${p.total} invitations` : p.counts.failed ? `${done - p.counts.failed} sent, ${p.counts.failed} failed` : <span className="row"><Illustration name="check-badge" size={36} /> All {p.total} invitations sent</span>}</h3>
+          <h3>{phase === "sending" ? `Sending ${p.total} invitations` : p.counts.failed ? `${done - p.counts.failed} sent, ${p.counts.failed} failed` : <span className="row" style={{ gap: 10 }}><DoneTick size={32} /> All {p.total} invitations sent</span>}</h3>
           <div className="row" style={{ gap: 16 }}><div className="grow"><Track value={done} max={p.total} /></div><span className="mono">{done} of {p.total}</span></div>
           <div className="row" style={{ gap: 32 }}>
             <div><div className="kicker">Sent</div><div className="mono" style={{ fontSize: 20, color: "var(--success-text)" }}>{p.counts.sent + p.counts.delivered}</div></div>

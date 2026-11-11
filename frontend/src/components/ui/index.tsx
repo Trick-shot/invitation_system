@@ -1,3 +1,5 @@
+export { Loader } from "./Loader";
+export { DoneTick } from "./DoneTick";
 import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
