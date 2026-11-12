@@ -183,3 +183,38 @@ def test_owner_can_charge_open_bills_at_the_new_rate(owner, api_a, ws_a, event_a
 
 def test_reprice_is_owner_only(api_a):
     assert api_a.post("/api/platform/rates/reprice/", {}, format="json").status_code == 403
+
+
+def test_lists_page_as_asked(owner, api_a, ws_a, event_a):
+    """page_size is honoured (up to 200) and every list says how many pages it has."""
+    from apps.tenancy.models import Workspace
+
+    from .conftest import make_invitation
+
+    for i in range(7):
+        make_invitation(ws_a, event_a, name=f"Guest {i}", phone=f"+25571200{i:04d}")
+    r = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/", {"page_size": 3, "page": 2}).data
+    assert r["count"] == 7 and r["pages"] == 3 and r["page"] == 2 and len(r["results"]) == 3
+    assert api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/", {"page_size": 5000}).data["page_size"] == 200
+    for i in range(4):
+        Workspace.objects.create(name=f"Client {i}", slug=f"client-{i}")
+    o = client_for(owner)
+    page = o.get("/api/platform/workspaces/", {"page_size": 2}).data
+    assert len(page["results"]) == 2 and page["pages"] >= 3
+    # The tiles count every workspace, not just the page on screen.
+    assert page["summary"]["workspaces"] == Workspace.objects.count()
+    assert o.get("/api/platform/workspaces/", {"q": "client-3"}).data["count"] == 1
+
+
+def test_bill_charges_come_a_page_at_a_time(api_a, ws_a, event_a, inv_a, monkeypatch):
+    from apps.billing import service
+
+    monkeypatch.setattr(service, "CHARGES_PER_PAGE", 1)
+    send(api_a, ws_a, event_a, [inv_a.pk])
+    send(api_a, ws_a, event_a, [inv_a.pk], force=True)
+    url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/bill/"
+    b = api_a.get(url).data
+    n = b["charges_page"]["count"]
+    assert n >= 2 and len(b["charges"]) == b["charges_page"]["page_size"]
+    last = api_a.get(url, {"page": 99}).data
+    assert last["charges_page"]["page"] == last["charges_page"]["pages"]

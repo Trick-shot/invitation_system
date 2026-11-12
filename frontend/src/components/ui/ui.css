@@ -185,3 +185,22 @@ input[type="date"].input::-webkit-date-and-time-value, input[type="time"].input:
 .modal { overflow-x: hidden; } .modal.sheet { max-width: 100%; } /* phones only: on desktop a dialog keeps its 480px */
 /* Date and start time: side by side on wide screens, one per line on phones. */
 @media (max-width: 820px) { .row.form-pair { flex-direction: column; align-items: stretch !important; gap: 14px; } .row.form-pair > .field { flex: none; width: 100%; } }
+/* Pager: one for every table. Numbers on wide screens, "Page 2 of 7" on phones. */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 20px; border-top: 1px solid var(--border-subtle); }
+.pager-range { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.pager-btns { display: flex; align-items: center; gap: 4px; }
+.pager-btns .btn:first-child { margin-right: 6px; } .pager-btns .btn:last-child { margin-left: 6px; }
+.pager-num { min-width: 32px; height: 32px; padding: 0 6px; border-radius: var(--r-md); border: 1px solid transparent; background: none; color: var(--text-primary); font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.pager-num:hover { background: var(--bg-hover); }
+.pager-num.on { background: var(--bg-accent-subtle); color: var(--text-accent); font-weight: 600; }
+.pager-gap { color: var(--text-tertiary); padding: 0 2px; }
+.pager-of { display: none; color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+@media (max-width: 820px) {
+  .pager { padding: 12px 16px; }
+  .pager-num, .pager-gap { display: none; }
+  .pager-of { display: inline; padding: 0 6px; }
+  .pager-range { width: 100%; }
+}
+/* A table waiting for its next page keeps the rows it has, dimmed, instead of flashing a skeleton. */
+.paging { transition: opacity .15s ease-out; }
+.paging.busy { opacity: .55; }

@@ -25,7 +25,7 @@ export interface Invitation {
   card: string | null; card_status: CardStatus; card_error: string; view_count: number; first_viewed_at: string | null; notes: string;
   token: string; public_url: string; last_delivery: Delivery | null; created_at: string; updated_at: string;
 }
-export interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[] }
+export interface Paginated<T> { count: number; page: number; pages: number; page_size: number; next: string | null; previous: string | null; results: T[] }
 
 export interface PreviewRow { name: string; phone_raw: string; phone: string; phone_display?: string; capacity: number; status: "ready" | "duplicate" | "needs_attention"; reason: string }
 export interface ImportPreview { rows: PreviewRow[]; counts: { ready: number; duplicate: number; needs_attention: number }; found: number }
@@ -75,6 +75,7 @@ export interface EventBillData {
   bill: BillState; currency: string; price_per_sms: number; prices_used: number[]; messages: number; sms: number; amount: number;
   still_to_come: { welcome_texts: number; amount: number }; by_kind: KindRow[];
   charges: { recipient: string; kind: string; label: string; sms: number; price_per_sms: number; amount: number; at: string }[];
+  charges_page: { count: number; page: number; pages: number; page_size: number };
   cost?: number; profit?: number; cost_per_sms?: number; costs_used?: number[]; how_to_pay?: HowToPay;
 }
 export interface BillingData { currency: string; price_per_sms: number; prices_used: number[]; to_pay_now: number; running: number; paid_this_year: number; sms_this_year: number; events: { id: number; name: string; date: string; sms: number; amount: number; prices_used: number[]; bill: BillState }[]; how_to_pay: HowToPay }
@@ -86,3 +87,4 @@ export interface EarningsData {
 export interface OpenBillRow { id: number; name: string; workspace: string; workspace_id: number; sms: number; prices_used: number[]; amount_now: number; amount_after: number }
 export interface OpenBills { price_per_sms: number; events: OpenBillRow[]; amount_now: number; amount_after: number }
 export interface SmsRatesData { cost_per_sms: number; price_per_sms: number; currency: string; updated_at: string; open_bills: OpenBills }
+export interface PlatformSummary { workspaces: number; active_this_month: number; sms_this_month: number; events_open: number; setup_stalled: number; deleting: number }

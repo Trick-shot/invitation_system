@@ -47,6 +47,13 @@ class WorkspaceBillingView(APIView):
         return Response(data)
 
 
+def _page(request) -> int:
+    try:
+        return max(1, int(request.query_params.get("page") or 1))
+    except ValueError:
+        return 1
+
+
 class EventBillView(APIView):
     """Admins and coordinators: the Send page shows the running bill next to the estimate."""
 
@@ -59,7 +66,7 @@ class EventBillView(APIView):
         with workspace_context(ws):
             ev = get_object_or_404(Event.objects.select_related("workspace"), pk=event_pk)
             if request.query_params.get("download") == "csv":
-                data = event_bill(ev, with_cost=False, latest=100_000)
+                data = event_bill(ev, with_cost=False, per_page=1_000_000)
                 rows = [[c["recipient"], c["label"], c["sms"], c["price_per_sms"], c["amount"], c["at"].isoformat()] for c in data["charges"]]
                 return _csv(f"{ws.slug}-{ev.pk}-bill.csv", ["Sent to", "What", "SMS", f"Price per SMS ({data['currency']})", f"Amount ({data['currency']})", "When"], rows)
-            return Response(event_bill(ev, with_cost=False))
+            return Response(event_bill(ev, with_cost=False, page=_page(request)))

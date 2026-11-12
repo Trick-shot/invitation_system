@@ -33,7 +33,7 @@ function usePrefetchTabs(slug: string, eventId: string, ready: boolean) {
       pf(["template", slug, eventId], `${base}/template/`, true);
       pf(["message", slug, eventId], `${base}/message/`);
       pf(["scans-grouped", slug, eventId], `${base}/scans/guests/`);
-      pf(["members", slug], `${ws(slug)}/members/?page_size=100`);
+      pf(["members", slug, 1], `${ws(slug)}/members/?page=1&page_size=50`);
     }, 1500);
   }, [ready, slug, eventId, qc]);
 }

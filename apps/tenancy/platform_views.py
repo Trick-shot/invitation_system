@@ -33,11 +33,52 @@ class _PlatformWorkspaceList(viewsets.ModelViewSet):
             .annotate(n=Count("id"))
             .values("n")
         )
-        return Workspace.objects.annotate(
+        qs = Workspace.objects.annotate(
             members=Count("memberships", filter=Q(memberships__is_active=True), distinct=True),
             events=Coalesce(Subquery(events_all, output_field=IntegerField()), 0),
             events_open=Coalesce(Subquery(events_open, output_field=IntegerField()), 0),
         ).order_by("name")
+        if self.action == "list":
+            q = (self.request.query_params.get("q") or "").strip()
+            if q:
+                qs = qs.filter(Q(name__icontains=q) | Q(slug__icontains=q) | Q(memberships__user__email__icontains=q) | Q(memberships__user__full_name__icontains=q)).distinct()
+            status = self.request.query_params.get("status")
+            if status in Workspace.Status.values:
+                qs = qs.filter(status=status)
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        """One page of workspaces, plus totals across all of them for the tiles above the table."""
+        resp = super().list(request, *args, **kwargs)
+        resp.data["summary"] = _platform_summary()
+        return resp
+
+
+def _platform_summary() -> dict:
+    """Counted in the database, so the tiles stay right however many pages the list has."""
+    from datetime import timedelta
+
+    from django.db.models import Exists
+    from django.utils import timezone
+
+    from apps.billing.models import SmsCharge
+    from apps.billing.service import month_range, totals
+    from apps.events.models import Event
+
+    live = Workspace.objects.exclude(status=Workspace.Status.DELETING)
+    month_ago = timezone.now() - timedelta(days=30)
+    has_admin = Membership.objects.filter(workspace=OuterRef("pk"), role="admin", is_active=True)
+    has_event = Event.objects.all_workspaces().filter(workspace=OuterRef("pk"))
+    now = timezone.now()
+    start, end = month_range(now.year, now.month)
+    return {
+        "workspaces": live.count(),
+        "active_this_month": live.filter(memberships__user__last_login__gte=month_ago).distinct().count(),
+        "sms_this_month": totals(SmsCharge.objects.all_workspaces().filter(created_at__gte=start, created_at__lt=end))["sms"],
+        "events_open": Event.objects.all_workspaces().filter(status=Event.Status.OPEN, workspace__in=live).count(),
+        "setup_stalled": live.annotate(a=Exists(has_admin), e=Exists(has_event)).filter(Q(a=False) | Q(e=False)).count(),
+        "deleting": Workspace.objects.filter(status=Workspace.Status.DELETING).count(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -246,8 +287,9 @@ class PlatformEventBillView(APIView):
 
     def get(self, request, pk):
         from apps.billing.service import event_bill
+        from apps.billing.views import _page
 
-        return Response(event_bill(self._event(pk), with_cost=True))
+        return Response(event_bill(self._event(pk), with_cost=True, page=_page(request)))
 
     def post(self, request, pk):
         from apps.billing.models import EventBill
@@ -266,7 +308,6 @@ class SmsRatesView(APIView):
 
     def get(self, request):
         from apps.billing.models import SmsRates
-
         from apps.billing.service import open_bills_preview
 
         r = SmsRates.current()

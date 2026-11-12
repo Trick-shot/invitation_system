@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ws } from "../../api/client";
 import type { Member, Paginated, Role } from "../../api/types";
-import { Avatar, Badge, Button, Empty, Field, Input, Modal, useToast, useIsPhone, ErrorState, SkelRows } from "../../components/ui";
+import { Avatar, Badge, Button, Empty, Field, Input, Modal, Pager, scrollToTable, useToast, useIsPhone, ErrorState, SkelRows } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 const roleLabel: Record<Role, string> = { admin: "Admin", coordinator: "Coordinator", door_staff: "Door staff" };
@@ -14,7 +14,9 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
   const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Member | null>(null);
-  const list = useQuery({ queryKey: ["members", slug], queryFn: () => api<Paginated<Member>>(`${ws(slug)}/members/?page_size=100`) });
+  const [page, setPage] = useState(1);
+  const top = useRef<HTMLDivElement>(null);
+  const list = useQuery({ queryKey: ["members", slug, page], queryFn: () => api<Paginated<Member>>(`${ws(slug)}/members/?page=${page}&page_size=50`), placeholderData: keepPreviousData });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["members", slug] });
   const remove = useMutation({ mutationFn: (m: Member) => api(`${ws(slug)}/members/${m.id}/`, { method: "DELETE" }), onSuccess: () => { setRemoving(null); invalidate(); toast("Member removed"); }, onError: (e) => toast((e as ApiError).summary, true) });
   const resend = useMutation({ mutationFn: (m: Member) => api<{ delivery?: Delivery }>(`${ws(slug)}/members/${m.id}/resend-invite/`, { method: "POST" }), onSuccess: (r, m) => { const [msg, bad] = deliveryNote(m.full_name || m.email, r.delivery); toast(msg, bad); } });
@@ -31,8 +33,8 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
       ) : members.length === 0 ? (
         <div className="panel"><Empty illustration="phone-contacts" title="No staff yet" action={isAdmin && <Button variant="primary" onClick={() => setAdding(true)}>Add the first one</Button>}>Add whoever will stand at the door. They get a link by SMS or email to set a password.</Empty></div>
       ) : (
-        <div className="panel">
-          <table className="table m-cards">
+        <div className="panel" ref={top}>
+          <table className={`table m-cards paging ${list.isPlaceholderData ? "busy" : ""}`}>
             <thead><tr><th>Person</th><th>Contact</th><th>Role</th><th>Status</th><th /></tr></thead>
             <tbody>
               {members.map((m) => (
@@ -46,6 +48,7 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
               ))}
             </tbody>
           </table>
+          <Pager page={list.data.page} pages={list.data.pages} count={list.data.count} pageSize={list.data.page_size} noun="people" onPage={(p) => { setPage(p); scrollToTable(top.current); }} />
         </div>
       )}
       <AddMemberModal open={adding} onClose={() => setAdding(false)} onAdded={invalidate} />

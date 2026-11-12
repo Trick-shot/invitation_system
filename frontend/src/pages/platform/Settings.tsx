@@ -133,8 +133,8 @@ function RatesSummary() {
 }
 
 function BeingDeleted() {
-  const list = useQuery({ queryKey: ["platform"], queryFn: () => api<Paginated<PlatformWorkspace>>("/api/platform/workspaces/?page_size=200") });
-  const rows = (list.data?.results ?? []).filter((w) => w.status === "deleting");
+  const list = useQuery({ queryKey: ["platform", "deleting"], queryFn: () => api<Paginated<PlatformWorkspace>>("/api/platform/workspaces/?status=deleting&page_size=200") });
+  const rows = list.data?.results ?? [];
   return (
     <section className="panel panel-pad stack" style={{ gap: 12 }}>
       <h4>Deleting a workspace</h4>

@@ -2,6 +2,7 @@ export { PageTransition, CountUp, Stagger, Rise, riseIn, EASE } from "./motion";
 export { Loader } from "./Loader";
 export { DoneTick } from "./DoneTick";
 export { PageLoader, ErrorState, Skel, SkelStats, SkelRows, SkelPanel, Async, WholeImage } from "./states";
+export { Pager, usePaged, pageList, scrollToTable } from "./Pager";
 import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CountUp, riseIn, EASE } from "./motion";

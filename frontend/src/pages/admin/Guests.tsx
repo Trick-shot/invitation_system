@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, ErrorState, Field, Input, Modal, SkelRows, Track, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, ErrorState, Field, Input, Modal, Pager, SkelRows, Track, scrollToTable, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
 import { GuestSheet } from "./GuestSheet";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
@@ -19,14 +19,20 @@ export default function Guests() {
   const urlQ = params.get("q") ?? "";
   useEffect(() => { setQ0(urlQ); }, [urlQ]);
   const setQ = (v: string) => { setQ0(v); };
-  const [page, setPage] = useState(1);
+  // The page belongs to one search and filter: change either and you are back on page 1, in the same render.
+  const [paged, setPaged] = useState({ for: "", page: 1 });
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const navigate = useNavigate();
   const [open, setOpen] = useState<Invitation | null>(null);
   const qc = useQueryClient();
+  const view = `${filter}|${q}`;
+  const page = paged.for === view ? paged.page : 1;
+  const setPage = (p: number) => setPaged({ for: view, page: p });
   const key = ["invitations", slug, eventId, filter, q, page];
-  const list = useQuery({ queryKey: key, queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page=${page}&page_size=50&filter=${filter}&q=${encodeURIComponent(q)}`) });
+  // The rows on screen stay (dimmed) while the next page loads, so paging never flashes a skeleton.
+  const list = useQuery({ queryKey: key, queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page=${page}&page_size=50&filter=${filter}&q=${encodeURIComponent(q)}`), placeholderData: keepPreviousData });
+  const tableTop = useRef<HTMLDivElement>(null);
   const hasPending = list.data?.results.some((g) => g.card_status === "pending" || g.card_status === "generating");
   useEffect(() => { if (!hasPending) return; const t = setInterval(() => list.refetch(), 3000); return () => clearInterval(t); }, [hasPending, list]);
   const invalidate = () => { qc.invalidateQueries({ queryKey: ["invitations", slug, eventId] }); qc.invalidateQueries({ queryKey: ["dashboard", slug, eventId] }); refetch(); };
@@ -51,6 +57,7 @@ export default function Guests() {
           {list.isLoading && <SkelRows rows={8} />}
           {list.isError && !list.data && <ErrorState title="The guest list did not load" onRetry={() => list.refetch()} />}
           {list.isSuccess && total === 0 && <div className="empty" style={{ padding: 32 }}><h3>No guests match</h3><p>{q ? `Nothing found for "${q}".` : "Nobody is in this group yet."}</p><div style={{ marginTop: 8 }}><Button variant="ghost" onClick={() => { setQ(""); setParams({}); }}>Show everyone</Button></div></div>}
+          <div ref={tableTop} className={`paging ${list.isPlaceholderData ? "busy" : ""}`}>
           <div className="m-list">
             {(list.data?.results ?? []).map((g) => (
               <div key={g.id} className="m-guest" onClick={() => setOpen(g)} role="button" tabIndex={0}>
@@ -79,7 +86,8 @@ export default function Guests() {
               ))}
             </tbody>
           </table>
-          {total > 50 && <div className="row panel-pad" style={{ justifyContent: "space-between" }}><span className="quiet">{total} guests</span><div className="row" style={{ gap: 6 }}><Button size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><Button size="sm" disabled={!list.data?.next} onClick={() => setPage(page + 1)}>Next</Button></div></div>}
+          </div>
+          {list.data && <Pager page={list.data.page} pages={list.data.pages} count={total} pageSize={list.data.page_size} noun="guests" onPage={(p) => { setPage(p); scrollToTable(tableTop.current); }} />}
         </div>
       )}
       <AddGuestModal open={adding} onClose={() => setAdding(false)} onAdded={invalidate} />

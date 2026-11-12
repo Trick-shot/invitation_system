@@ -1,10 +1,10 @@
 /** Platform / Workspaces (Figma 34:2). Counts only; a row opens the workspace detail. */
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
-import type { EarningsData, Paginated, PlatformWorkspace } from "../../api/types";
-import { Badge, Button, ErrorState, Field, Input, Modal, SkelStats, Stat, Stagger, fmtDate, relTime, useToast } from "../../components/ui";
+import type { EarningsData, Paginated, PlatformSummary, PlatformWorkspace } from "../../api/types";
+import { Badge, Button, ErrorState, Field, Input, Modal, Pager, SkelStats, Stat, Stagger, fmtDate, relTime, scrollToTable, useToast } from "../../components/ui";
 import { tzs } from "./money";
 
 const setupBadge = (s: PlatformWorkspace["setup"], w?: PlatformWorkspace) =>
@@ -18,7 +18,16 @@ export default function Workspaces() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", default_country: "TZ", admin_email: "", admin_name: "", admin_phone: "" });
   const [err, setErr] = useState<ApiError | null>(null);
-  const list = useQuery({ queryKey: ["platform"], queryFn: () => api<Paginated<PlatformWorkspace>>("/api/platform/workspaces/?page_size=200") });
+  const [q, setQ] = useState("");
+  const [paged, setPaged] = useState({ for: "", page: 1 });
+  const page = paged.for === q ? paged.page : 1;
+  const top = useRef<HTMLDivElement>(null);
+  // One page at a time; the tiles come from the server's totals so they count every workspace, not just this page.
+  const list = useQuery({
+    queryKey: ["platform", "list", q, page],
+    queryFn: () => api<Paginated<PlatformWorkspace> & { summary: PlatformSummary }>(`/api/platform/workspaces/?page=${page}&page_size=50&q=${encodeURIComponent(q)}`),
+    placeholderData: keepPreviousData,
+  });
   const earn = useQuery({ queryKey: ["earnings", "now"], queryFn: () => api<EarningsData>("/api/platform/earnings/") });
   const create = useMutation({
     mutationFn: () => api<PlatformWorkspace>("/api/platform/workspaces/", { method: "POST", body: form }),
@@ -26,31 +35,25 @@ export default function Workspaces() {
     onError: (e) => setErr(e as ApiError),
   });
   const rows = list.data?.results ?? [];
-  const month = Date.now() - 30 * 864e5;
-  const totals = {
-    ws: rows.length,
-    active: rows.filter((r) => r.last_active && new Date(r.last_active).getTime() > month).length,
-    sms: rows.reduce((a, r) => a + (r.sms_this_month ?? 0), 0),
-    open: rows.reduce((a, r) => a + r.events_open, 0),
-    stalled: rows.filter((r) => r.setup !== "complete" && r.status !== "deleting").length,
-  };
+  const totals = list.data?.summary;
   return (
     <>
       <div className="p-head"><div><h1>Workspaces</h1><p className="muted">Counts and usage only. Guest lists belong to each workspace and are not readable from here.</p></div><Button variant="primary" onClick={() => setOpen(true)}>New workspace</Button></div>
-      {list.data ? (
+      {totals ? (
         <Stagger className="stats">
-          <Stat label="Workspaces" value={totals.ws} delta={`${totals.active} active this month`} active />
-          <Stat label="SMS this month" value={totals.sms} delta={earn.data ? <Link to="/platform/earnings">TZS {tzs(earn.data.profit)} profit, see Earnings</Link> : "across all workspaces"} />
-          <Stat label="Events running" value={totals.open} delta="doors open now" />
-          <Stat label="Setup stalled" value={totals.stalled} delta={totals.stalled ? "needs a call" : "all set"} tone={totals.stalled ? "danger" : "neutral"} />
+          <Stat label="Workspaces" value={totals.workspaces} delta={`${totals.active_this_month} active this month`} active />
+          <Stat label="SMS this month" value={totals.sms_this_month} delta={earn.data ? <Link to="/platform/earnings">TZS {tzs(earn.data.profit)} profit, see Earnings</Link> : "across all workspaces"} />
+          <Stat label="Events running" value={totals.events_open} delta="doors open now" />
+          <Stat label="Setup stalled" value={totals.setup_stalled} delta={totals.setup_stalled ? "needs a call" : "all set"} tone={totals.setup_stalled ? "danger" : "neutral"} />
         </Stagger>
       ) : list.isError ? <div className="panel"><ErrorState title="Workspaces did not load" onRetry={() => list.refetch()} /></div> : <SkelStats />}
-      <div className="panel" style={{ overflowX: "auto" }}>
-        <table className="table">
+      <div className="toolbar"><div className="search" style={{ width: 300 }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden><circle cx="7" cy="7" r="4.75" stroke="currentColor" strokeWidth="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg><input placeholder="Search workspace, admin name or email" value={q} onChange={(e) => setQ(e.target.value)} /></div></div>
+      <div className="panel" style={{ overflowX: "auto" }} ref={top}>
+        <table className={`table paging ${list.isPlaceholderData ? "busy" : ""}`}>
           <thead><tr><th>Workspace</th><th>Contact</th><th>Sends on</th><th className="money">SMS this month</th><th>Setup</th><th>Last active</th></tr></thead>
           <tbody>
             {!list.data && !list.isError && [0, 1, 2].map((i) => <tr key={i} aria-hidden><td colSpan={6}><div className="skeleton" style={{ height: 18 }} /></td></tr>)}
-            {list.data && rows.length === 0 && <tr><td colSpan={6} className="quiet" style={{ textAlign: "center", padding: 24 }}>No workspaces yet. Create the first one with New workspace.</td></tr>}
+            {list.data && rows.length === 0 && <tr><td colSpan={6} className="quiet" style={{ textAlign: "center", padding: 24 }}>{q ? `No workspace matches "${q}".` : "No workspaces yet. Create the first one with New workspace."}</td></tr>}
             {rows.map((w) => (
               <tr key={w.id} className="clickable" onClick={() => nav(`/platform/workspaces/${w.id}`)}>
                 <td><b>{w.name}</b><div className="mono quiet" style={{ fontSize: 12 }}>{w.slug}</div></td>
@@ -63,6 +66,7 @@ export default function Workspaces() {
             ))}
           </tbody>
         </table>
+        {list.data && <Pager page={list.data.page} pages={list.data.pages} count={list.data.count} pageSize={list.data.page_size} noun="workspaces" onPage={(p) => { setPaged({ for: q, page: p }); scrollToTable(top.current); }} />}
       </div>
       <div className="note"><b>Opening a workspace is logged and visible to the client</b><p>You can open any workspace read-only to help a client. Each visit appears in their activity. Changing anything needs edit mode: a reason, 30 minutes, and a summary sent to the client.</p></div>
       <Modal open={open} onClose={() => setOpen(false)} title="New workspace" sub="Creates the workspace and emails its first admin a set-password link."

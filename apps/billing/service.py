@@ -135,8 +135,16 @@ def welcome_still_to_come(event) -> int:
     return Invitation.objects.all_workspaces().filter(event=event, admitted_count=0).count()
 
 
-def event_bill(event, *, with_cost: bool, latest: int = 20) -> dict:
+CHARGES_PER_PAGE = 50
+
+
+def event_bill(event, *, with_cost: bool, page: int = 1, per_page: int | None = None) -> dict:
+    """The bill for one event. `charges` is one page of the messages it charges for, newest first."""
+    per_page = per_page or CHARGES_PER_PAGE  # read at call time, not frozen into the signature
     qs = SmsCharge.objects.all_workspaces().filter(event=event)
+    n = qs.count()
+    pages = max(1, -(-n // per_page))
+    page = min(max(1, int(page or 1)), pages)
     t = totals(qs)
     rates = SmsRates.current()
     to_come = welcome_still_to_come(event)
@@ -154,8 +162,9 @@ def event_bill(event, *, with_cost: bool, latest: int = 20) -> dict:
         "by_kind": by_kind(qs, with_cost=with_cost),
         "charges": [
             {"recipient": c.recipient, "kind": c.kind, "label": c.get_kind_display(), "sms": c.segments, "price_per_sms": c.price_per_sms, "amount": c.amount, "at": c.created_at}
-            for c in qs.order_by("-created_at")[:latest]
+            for c in qs.order_by("-created_at", "-pk")[(page - 1) * per_page : page * per_page]
         ],
+        "charges_page": {"count": n, "page": page, "pages": pages, "page_size": per_page},
     }
     if with_cost:
         data.update(cost=t["cost"], profit=t["profit"], cost_per_sms=rates.cost_per_sms, costs_used=used(qs, "cost_per_sms"))

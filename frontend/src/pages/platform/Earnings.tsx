@@ -1,9 +1,10 @@
 /** Platform / Earnings (Figma 174:16) and Platform / Event bill (174:328). */
+import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
 import type { BillStatus, EarningsData, EventBillData } from "../../api/types";
-import { Button, ErrorState, SkelPanel, SkelStats, Stat, Stagger, fmtDate, useToast } from "../../components/ui";
+import { Button, ErrorState, Pager, SkelPanel, SkelStats, Stat, Stagger, fmtDate, scrollToTable, usePaged, useToast } from "../../components/ui";
 import { BillBadge, pct, rateLabel, tzs } from "./money";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -12,6 +13,8 @@ const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "Ju
 export default function Earnings() {
   const nav = useNavigate();
   const q = useQuery({ queryKey: ["earnings", "now"], queryFn: () => api<EarningsData>("/api/platform/earnings/") });
+  const pg = usePaged(q.data?.events ?? [], 25);
+  const top = useRef<HTMLDivElement>(null);
   if (q.isError && !q.data) return <div className="panel"><ErrorState title="Earnings did not load" onRetry={() => q.refetch()} /></div>;
   const e = q.data;
   const max = e ? Math.max(1, ...e.profit_by_month.map((m) => m.profit)) : 1;
@@ -46,12 +49,12 @@ export default function Earnings() {
         </div>
       )}
       {e && tot && (
-        <div className="panel" style={{ overflowX: "auto" }}>
+        <div ref={top} className="panel" style={{ overflowX: "auto" }}>
           <table className="table">
             <thead><tr><th>Event</th><th className="money">SMS</th><th className="money">Beem cost</th><th className="money">Billed</th><th className="money">Profit</th><th>Bill</th></tr></thead>
             <tbody>
               {e.events.length === 0 && <tr><td colSpan={6} className="quiet" style={{ textAlign: "center", padding: 24 }}>No SMS charged this month yet.</td></tr>}
-              {e.events.map((r) => (
+              {pg.slice.map((r) => (
                 <tr key={r.id} className="clickable" onClick={() => nav(`/platform/earnings/${r.id}`)}>
                   <td><b>{r.name}</b><div className="quiet" style={{ fontSize: 13 }}>{r.workspace}, {fmtDate(r.date)}</div></td>
                   <td className="money">{tzs(r.sms)}</td><td className="money">{tzs(r.cost)}</td><td className="money">{tzs(r.billed)}</td><td className="money">{tzs(r.profit)}</td>
@@ -61,6 +64,7 @@ export default function Earnings() {
               {e.events.length > 0 && <tr className="total"><td>Total, {e.events.length} event{e.events.length === 1 ? "" : "s"}</td><td className="money">{tzs(tot.sms)}</td><td className="money">{tzs(tot.cost)}</td><td className="money">{tzs(tot.billed)}</td><td className="money">{tzs(tot.profit)}</td><td /></tr>}
             </tbody>
           </table>
+          <Pager page={pg.page} pages={pg.pages} count={pg.count} pageSize={pg.pageSize} noun="events" onPage={(p) => { pg.setPage(p); scrollToTable(top.current); }} />
         </div>
       )}
       <div className="note"><b>Money is in TZS. Each SMS keeps the rate it was sent at</b><p>Changing your rates in SMS rates only affects messages sent afterwards, so a bill never changes after the fact. Open an event to see its bill by kind of message and mark it invoiced or paid.</p></div>
