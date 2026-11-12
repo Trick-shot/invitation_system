@@ -74,6 +74,13 @@ def admit(
                 ScanLog.objects.create(
                     result=ScanLog.Result.ACCEPTED, invitation=invitation, admitted_after=invitation.admitted_count, **log_kwargs
                 )
+                if invitation.admitted_count == 1:
+                    # First person on this card: the increment is atomic, so exactly one scan ever sees 1.
+                    from django_q.tasks import async_task
+
+                    from .welcome import send_welcome
+
+                    transaction.on_commit(lambda pk=invitation.pk, ws=event.workspace_id: async_task(send_welcome, pk, ws, group=f"welcome:{event.pk}"))
                 return Verdict(
                     result="accepted",
                     guest_name=invitation.name,

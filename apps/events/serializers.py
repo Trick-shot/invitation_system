@@ -49,16 +49,33 @@ class CardTemplateSerializer(serializers.ModelSerializer):
 class MessageTemplateSerializer(serializers.ModelSerializer):
     segments = serializers.SerializerMethodField()
     preview = serializers.SerializerMethodField()
+    welcome_segments = serializers.SerializerMethodField()
+    welcome_preview = serializers.SerializerMethodField()
 
     class Meta:
         model = MessageTemplate
-        fields = ("id", "channel", "language", "body", "segments", "preview", "updated_at")
+        fields = ("id", "channel", "language", "body", "segments", "preview", "welcome_enabled", "welcome_body", "welcome_segments", "welcome_preview", "updated_at")
         read_only_fields = ("updated_at",)
 
     def validate_body(self, body):
         if "{link}" not in body:
             raise serializers.ValidationError("The message must contain {link}, or guests cannot open their card.")
         return body
+
+    def validate(self, attrs):
+        enabled = attrs.get("welcome_enabled", getattr(self.instance, "welcome_enabled", True))
+        body = attrs.get("welcome_body", getattr(self.instance, "welcome_body", "x"))
+        if enabled and not (body or "").strip():
+            raise serializers.ValidationError({"welcome_body": "Write the welcome message, or turn it off."})
+        if "{link}" in (body or ""):
+            raise serializers.ValidationError({"welcome_body": "The welcome message has no link to insert. Remove {link}."})
+        return attrs
+
+    def get_welcome_segments(self, obj):
+        return sms_segments(obj.render_welcome(name="Amina Hassan"))
+
+    def get_welcome_preview(self, obj):
+        return obj.render_welcome(name="Amina Hassan")
 
     def get_segments(self, obj):
         sample = obj.render(name="Amina Hassan", link="https://trickshot.tech/i/x7k2mq9f")

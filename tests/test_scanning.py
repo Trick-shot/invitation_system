@@ -89,3 +89,37 @@ def test_two_cards_three_people(staff_a, ws_a, event_a):
     c = client_for(staff_a)
     results = [scan(c, event_a, inv.token).data["result"] for _ in range(4)]
     assert results == ["accepted", "accepted", "accepted", "exhausted"]
+
+
+@pytest.fixture
+def welcomes(monkeypatch):
+    sent = []
+    monkeypatch.setattr("apps.scanning.welcome.send_transactional_sms", lambda **kw: sent.append(kw))
+    return sent
+
+
+def test_welcome_sms_once_per_card_on_first_admission(staff_a, ws_a, event_a, inv_a, welcomes, django_capture_on_commit_callbacks):
+    c = client_for(staff_a)
+    with django_capture_on_commit_callbacks(execute=True):
+        scan(c, event_a, inv_a.token)
+    assert len(welcomes) == 1
+    assert welcomes[0]["to"] == inv_a.phone and "Amina Hassan" in welcomes[0]["body"] and event_a.name in welcomes[0]["body"]
+    with django_capture_on_commit_callbacks(execute=True):
+        scan(c, event_a, inv_a.token)  # second person on the same card
+        scan(c, event_a, inv_a.token)  # card used up
+    assert len(welcomes) == 1
+
+
+def test_welcome_sms_respects_switch_and_custom_text(api_a, staff_a, ws_a, event_a, inv_a, welcomes, django_capture_on_commit_callbacks):
+    url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/message/"
+    r = api_a.patch(url, {"welcome_body": "Karibu {name}! Karibu {event}."}, format="json")
+    assert r.status_code == 200 and r.data["welcome_preview"].startswith("Karibu Amina Hassan!")
+    assert api_a.patch(url, {"welcome_body": "Your card {link}"}, format="json").status_code == 400
+    other = make_invitation(ws_a, event_a, name="Grace Kimaro", phone="+255713909544")
+    with django_capture_on_commit_callbacks(execute=True):
+        scan(client_for(staff_a), event_a, inv_a.token)
+    assert welcomes[-1]["body"] == f"Karibu Amina Hassan! Karibu {event_a.name}."
+    api_a.patch(url, {"welcome_enabled": False}, format="json")
+    with django_capture_on_commit_callbacks(execute=True):
+        scan(client_for(staff_a), event_a, other.token)
+    assert len(welcomes) == 1

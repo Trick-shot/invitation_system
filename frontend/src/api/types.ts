@@ -12,7 +12,7 @@ export interface Event {
   invitation_count: number; people_expected: number; people_arrived: number; has_template: boolean; has_message: boolean; created_at: string; updated_at: string;
 }
 export interface CardTemplate { id: number; image: string; width: number; height: number; slot_x: number; slot_y: number; slot_size: number; updated_at: string }
-export interface MessageTemplate { id: number; channel: "sms" | "whatsapp"; language: string; body: string; segments: { characters: number; segments: number; encoding: string }; preview: string; updated_at: string }
+export interface MessageTemplate { id: number; channel: "sms" | "whatsapp"; language: string; body: string; segments: { characters: number; segments: number; encoding: string }; preview: string; welcome_enabled: boolean; welcome_body: string; welcome_segments: { characters: number; segments: number; encoding: string }; welcome_preview: string; updated_at: string }
 
 export type DeliveryStatus = "queued" | "sent" | "delivered" | "failed";
 export interface Delivery { id: number; channel: string; sequence: number; status: DeliveryStatus; provider: string; error: string; created_at: string; updated_at: string }

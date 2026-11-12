@@ -72,6 +72,9 @@ class CardTemplate(WorkspaceOwnedModel):
         super().save(*args, **kwargs)
 
 
+DEFAULT_WELCOME = "Welcome, {name}. You have arrived at {event}. Enjoy the celebration."
+
+
 class MessageTemplate(WorkspaceOwnedModel):
     """Per-event message body. {name}, {link} and {event} are substituted at send time."""
 
@@ -83,12 +86,18 @@ class MessageTemplate(WorkspaceOwnedModel):
     channel = models.CharField(max_length=10, choices=Channel.choices, default=Channel.SMS)
     language = models.CharField(max_length=8, default="en")
     body = models.TextField()
+    # Sent once per card, when the first person on it is admitted at the door.
+    welcome_enabled = models.BooleanField(default=True)
+    welcome_body = models.TextField(default=DEFAULT_WELCOME)
     updated_at = models.DateTimeField(auto_now=True)
 
     PLACEHOLDERS = ("{name}", "{link}", "{event}")
 
     def render(self, *, name: str, link: str) -> str:
         return self.body.replace("{name}", name).replace("{link}", link).replace("{event}", self.event.name)
+
+    def render_welcome(self, *, name: str) -> str:
+        return self.welcome_body.replace("{name}", name).replace("{event}", self.event.name).strip()
 
 
 DEFAULT_MESSAGES = {
