@@ -12,6 +12,7 @@
 .navitem.active svg { color: var(--text-accent); }
 .sidebar .foot { margin-top: auto; display: flex; flex-direction: column; gap: 14px; }
 .user { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.user .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user small { display: block; color: var(--text-tertiary); }
 .main { min-width: 0; }
 .topbar { display: flex; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--border-default); background: var(--bg-surface); }
@@ -126,6 +127,19 @@
   .phone { width: 100%; }
   .slot .handle { width: 16px; height: 16px; right: -9px; bottom: -9px; }
   .slot .handle::after { inset: -14px; }
+  .sidebar { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .head-row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .head-row .btn { align-self: flex-start; }
+  /* tables become stacked cards: first cell is the title row, the last (actions) its own row */
+  .table.m-cards thead { display: none; }
+  .table.m-cards, .table.m-cards tbody, .table.m-cards tr, .table.m-cards td { display: block; }
+  .table.m-cards tr { padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
+  .table.m-cards tr:last-child { border-bottom: 0; }
+  .table.m-cards td { border: 0; padding: 2px 0; }
+  .table.m-cards td[data-l]::before { content: attr(data-l); display: inline-block; min-width: 92px; font-size: 12px; color: var(--text-tertiary); }
+  .table.m-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
+  .table.m-cards td[style*="text-align: right"] { text-align: left !important; padding-top: 8px; }
+  .table.m-cards td[style*="text-align: right"] .row { justify-content: flex-start !important; }
   /* modals become sheets */
   .scrim { place-items: end center !important; padding: 0 !important; }
   .modal.sheet { width: 100% !important; max-width: none !important; border-radius: 18px 18px 0 0 !important; max-height: 92dvh; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 10px 20px calc(24px + env(safe-area-inset-bottom, 0px)); will-change: transform; }

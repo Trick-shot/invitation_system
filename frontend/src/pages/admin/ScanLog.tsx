@@ -13,11 +13,11 @@ export default function ScanLog() {
   if (q.data && rows.length === 0) return <div className="panel"><Empty illustration="scanner-phone" title="No scans yet">Every scan at the door lands here, accepted or not, with who scanned it and when.</Empty></div>;
   return (
     <div className="panel">
-      <table className="table">
+      <table className="table m-cards">
         <thead><tr><th>Time</th><th>Guest</th><th>Result</th><th>Scanned by</th><th>Device</th></tr></thead>
         <tbody>
           {rows.map((r) => { const [t, tone] = label[r.result] ?? [r.result, "neutral"]; return (
-            <tr key={r.id}><td className="num">{fmtTime(r.at)}</td><td>{r.guest || <span className="quiet">Unknown card</span>}{r.manual && <Badge tone="accent">by name</Badge>}</td><td><Badge tone={tone} dot>{t}{r.result === "accepted" ? ` (${r.admitted_after})` : ""}</Badge></td><td>{r.staff}</td><td className="quiet mono" style={{ fontSize: 12 }}>{r.device_id}</td></tr>
+            <tr key={r.id}><td className="num">{fmtTime(r.at)}</td><td>{r.guest || <span className="quiet">Unknown card</span>}{r.manual && <Badge tone="accent">by name</Badge>}</td><td><Badge tone={tone} dot>{t}{r.result === "accepted" ? ` (${r.admitted_after})` : ""}</Badge></td><td data-l="Scanned by">{r.staff}</td><td data-l="Device" className="quiet mono" style={{ fontSize: 12 }}>{r.device_id}</td></tr>
           ); })}
         </tbody>
       </table>

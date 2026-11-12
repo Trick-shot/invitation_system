@@ -53,16 +53,16 @@ export default function Overview() {
       </Stagger>
       <Rise className="panel">
         <div className="row panel-pad" style={{ justifyContent: "space-between" }}><h4>Latest arrivals</h4><Link to={`${base}/guests`} className="btn btn-secondary btn-sm">All guests</Link></div>
-        <table className="table">
+        <table className="table m-cards">
           <thead><tr><th>Guest</th><th>Phone</th><th>Sent</th><th>Card opened</th><th>Admitted</th></tr></thead>
           <tbody>
             {(latest.data?.results ?? []).map((g) => (
               <tr key={g.id}>
                 <td><div className="row"><Avatar initials={g.initials} /><div>{g.name}<div className="quiet" style={{ fontSize: 12 }}>{g.capacity} {g.capacity === 1 ? "person" : "people"} on the card</div></div></div></td>
                 <td className="num">{g.phone_display}</td>
-                <td>{g.last_delivery ? (g.last_delivery.status === "failed" ? <span style={{ color: "var(--danger-text)" }}>Failed</span> : fmtTime(g.last_delivery.updated_at)) : <span className="quiet">Not yet</span>}</td>
-                <td>{g.first_viewed_at ? fmtTime(g.first_viewed_at) : <span className="quiet">Not yet</span>}</td>
-                <td><div className="row" style={{ gap: 10 }}><div style={{ width: 48 }}><Track value={g.admitted_count} max={g.capacity} tone={g.admitted_count === g.capacity ? "ok" : undefined} /></div><span className="mono">{g.admitted_count} of {g.capacity}</span></div></td>
+                <td data-l="Sent">{g.last_delivery ? (g.last_delivery.status === "failed" ? <span style={{ color: "var(--danger-text)" }}>Failed</span> : fmtTime(g.last_delivery.updated_at)) : <span className="quiet">Not yet</span>}</td>
+                <td data-l="Card opened">{g.first_viewed_at ? fmtTime(g.first_viewed_at) : <span className="quiet">Not yet</span>}</td>
+                <td data-l="Admitted"><div className="row" style={{ gap: 10 }}><div style={{ width: 48 }}><Track value={g.admitted_count} max={g.capacity} tone={g.admitted_count === g.capacity ? "ok" : undefined} /></div><span className="mono">{g.admitted_count} of {g.capacity}</span></div></td>
               </tr>
             ))}
           </tbody>

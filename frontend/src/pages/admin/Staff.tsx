@@ -22,7 +22,7 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
   const isAdmin = role === "admin";
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row head-row" style={{ justifyContent: "space-between" }}>
         <div><h3>{standalone ? "" : "Who can scan at the door"}</h3><p className="muted">Door staff sign in to the scanner with their own account. They never see the guest list.</p></div>
         {isAdmin && <Button variant="primary" onClick={() => setAdding(true)}>Add staff member</Button>}
       </div>
@@ -30,7 +30,7 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
         <div className="panel"><Empty illustration="phone-contacts" title="No staff yet" action={isAdmin && <Button variant="primary" onClick={() => setAdding(true)}>Add the first one</Button>}>Add whoever will stand at the door. They get a link by SMS or email to set a password.</Empty></div>
       ) : (
         <div className="panel">
-          <table className="table">
+          <table className="table m-cards">
             <thead><tr><th>Person</th><th>Contact</th><th>Role</th><th>Status</th><th /></tr></thead>
             <tbody>
               {members.map((m) => (
