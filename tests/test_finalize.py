@@ -62,3 +62,12 @@ def test_editing_keeps_own_number_without_duplicate_error(api_a, ws_a, event_a, 
     url = f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/invitations/{inv_a.pk}/"
     r = api_a.patch(url, {"name": "Amina", "phone": "+255 712 345 678", "capacity": 2}, format="json")
     assert r.status_code == 200, r.data
+
+
+def test_dashboard_after_scans_buckets_arrivals_by_hour(api_a, staff_a, ws_a, event_a, inv_a):
+    """Regression: the overview 500'd on MySQL once a guest was scanned (TruncHour needs tz tables)."""
+    scan(client_for(staff_a), event_a, inv_a.token)
+    r = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/dashboard/")
+    assert r.status_code == 200
+    assert sum(b["count"] for b in r.data["arrivals_by_hour"]) == 1
+    assert r.data["arrivals_by_hour"][0]["hour"].endswith(":00:00+03:00")

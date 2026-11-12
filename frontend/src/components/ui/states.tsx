@@ -6,7 +6,7 @@
  * Rule from the Figma loading frame: numbers are never shown as zero while
  * loading. A zero reads as real data, so loading shows grey bars instead.
  */
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 /** Full-screen loader. Same markup and classes as the boot screen in index.html, so the hand-over is seamless. */
@@ -37,8 +37,14 @@ const useOnline = () => {
 /** Something failed to load. Always says what, and always offers a way forward. */
 export function ErrorState({ title = "This did not load", onRetry, compact, children }: { title?: string; onRetry?: () => void; compact?: boolean; children?: ReactNode }) {
   const online = useOnline();
-  // Coming back online is the most common fix; retry for them.
-  useEffect(() => { if (online && onRetry) onRetry(); }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Retry by itself only when the connection comes back (offline -> online). Never on
+  // mount: a refetch with no data puts the query back into "loading", which unmounts this
+  // screen, fails again, remounts it and retries again, an endless skeleton loop.
+  const was = useRef(online);
+  useEffect(() => {
+    if (online && !was.current && onRetry) onRetry();
+    was.current = online;
+  }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="state-error" role="alert" style={compact ? { padding: 20 } : undefined}>
       <div className="state-icon" aria-hidden>

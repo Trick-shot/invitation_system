@@ -3,10 +3,10 @@ Everything the event overview needs in one query-light call. Numbers come
 from the invitation, delivery and scan tables; nothing is stored twice.
 """
 
+from collections import Counter
 from datetime import timedelta
 
 from django.db.models import Count, Max, Q, Sum
-from django.db.models.functions import TruncHour
 from django.utils import timezone
 
 from apps.invitations.models import Delivery, Invitation
@@ -51,12 +51,13 @@ def build_dashboard(event) -> dict:
     )
     rejections = ScanLog.objects.filter(event=event).exclude(result=ScanLog.Result.ACCEPTED).values("result").annotate(n=Count("id"))
     manual = ScanLog.objects.filter(event=event, result=ScanLog.Result.ACCEPTED, manual=True).count()
-    series = (
-        ScanLog.objects.filter(event=event, result=ScanLog.Result.ACCEPTED)
-        .annotate(bucket=TruncHour("scanned_at"))
-        .values("bucket")
-        .annotate(n=Count("id"))
-        .order_by("bucket")
+    # Hour buckets are counted here, not with TruncHour in SQL: on MySQL that needs the
+    # server's time zone tables (CONVERT_TZ), which a fresh install does not have, and the
+    # query then returns NULL and the overview 500s as soon as the first guest is scanned.
+    # A few thousand timestamps per event is nothing to count in Python.
+    hours = Counter(
+        t.astimezone(timezone.get_current_timezone()).replace(minute=0, second=0, microsecond=0)
+        for t in ScanLog.objects.filter(event=event, result=ScanLog.Result.ACCEPTED).values_list("scanned_at", flat=True)
     )
 
     expected = totals["people_expected"] or 0
@@ -86,6 +87,6 @@ def build_dashboard(event) -> dict:
             "rejections": {r["result"]: r["n"] for r in rejections},
             "manual_admits": manual,
         },
-        "arrivals_by_hour": [{"hour": r["bucket"].isoformat(), "count": r["n"]} for r in series],
+        "arrivals_by_hour": [{"hour": h.isoformat(), "count": n} for h, n in sorted(hours.items())],
         "generated_at": now.isoformat(),
     }
