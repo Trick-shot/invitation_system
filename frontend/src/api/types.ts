@@ -83,4 +83,6 @@ export interface EarningsData {
   unpaid: number; unpaid_open: number; unpaid_invoiced: number; profit_by_month: { year: number; month: number; profit: number }[];
   events: { id: number; name: string; workspace: string; workspace_id: number; date: string; sms: number; cost: number; billed: number; profit: number; bill: BillState }[];
 }
-export interface SmsRatesData { cost_per_sms: number; price_per_sms: number; currency: string; updated_at: string }
+export interface OpenBillRow { id: number; name: string; workspace: string; workspace_id: number; sms: number; prices_used: number[]; amount_now: number; amount_after: number }
+export interface OpenBills { price_per_sms: number; events: OpenBillRow[]; amount_now: number; amount_after: number }
+export interface SmsRatesData { cost_per_sms: number; price_per_sms: number; currency: string; updated_at: string; open_bills: OpenBills }

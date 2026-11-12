@@ -267,8 +267,10 @@ class SmsRatesView(APIView):
     def get(self, request):
         from apps.billing.models import SmsRates
 
+        from apps.billing.service import open_bills_preview
+
         r = SmsRates.current()
-        return Response({"cost_per_sms": r.cost_per_sms, "price_per_sms": r.price_per_sms, "currency": r.currency, "updated_at": r.updated_at})
+        return Response({"cost_per_sms": r.cost_per_sms, "price_per_sms": r.price_per_sms, "currency": r.currency, "updated_at": r.updated_at, "open_bills": open_bills_preview()})
 
     def put(self, request):
         from decimal import Decimal, InvalidOperation
@@ -288,6 +290,18 @@ class SmsRatesView(APIView):
         r.cost_per_sms, r.price_per_sms, r.updated_by = cost, price, request.user
         r.save()
         return self.get(request)
+
+
+class RepriceOpenBillsView(APIView):
+    """{notify}: charge every open bill at today's price. Invoiced and paid bills never change."""
+
+    permission_classes = [IsPlatformOwner]
+
+    def post(self, request):
+        from apps.billing.service import open_bills_preview, reprice_open_bills
+
+        done = reprice_open_bills(by=request.user, notify=bool(request.data.get("notify", True)))
+        return Response({"changed": done, "open_bills": open_bills_preview()})
 
 
 class PlatformWorkspaceViewSet(PlatformWorkspaceDeletionMixin, PlatformWorkspaceDetailMixin, _PlatformWorkspaceList):

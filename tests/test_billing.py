@@ -141,3 +141,45 @@ def test_rate_label():
     assert rate_label([Decimal("35"), Decimal("85")]) == "35 and 85"
     assert rate_label([Decimal("30"), Decimal("35"), Decimal("85")]) == "30 to 85"
     assert rate_label([Decimal("35.50")]) == "35.50"
+
+
+def test_owner_can_charge_open_bills_at_the_new_rate(owner, api_a, ws_a, event_a, inv_a, mailoutbox):
+    from apps.billing.models import EventBill
+    from apps.tenancy.models import AuditEvent
+
+    from .conftest import make_event, make_invitation
+
+    rates = SmsRates.current()
+    rates.cost_per_sms, rates.price_per_sms = Decimal("25"), Decimal("35")
+    rates.save()
+    send(api_a, ws_a, event_a, [inv_a.pk])
+    # A second event that is already invoiced must not move.
+    other = make_event(ws_a, name="Lyimo Graduation")
+    inv2 = make_invitation(ws_a, other, name="Neema", phone="+255713000111")
+    send(api_a, ws_a, other, [inv2.pk])
+    o = client_for(owner)
+    o.post(f"/api/platform/events/{other.pk}/bill/", {"status": "invoiced"}, format="json")
+    invoiced_before = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{other.pk}/bill/").data["amount"]
+
+    o.put("/api/platform/rates/", {"cost_per_sms": "25", "price_per_sms": "85"}, format="json")
+    preview = o.get("/api/platform/rates/").data["open_bills"]
+    assert [e["id"] for e in preview["events"]] == [event_a.pk]
+    sms = preview["events"][0]["sms"]
+    assert Decimal(preview["events"][0]["amount_after"]) == 85 * sms
+
+    mailoutbox.clear()
+    r = o.post("/api/platform/rates/reprice/", {"notify": True}, format="json")
+    assert r.status_code == 200 and r.data["open_bills"]["events"] == []
+    bill = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/bill/").data
+    assert Decimal(bill["amount"]) == 85 * sms and [Decimal(p) for p in bill["prices_used"]] == [Decimal("85")]
+    # Beem's cost is a fact and stays; the invoiced bill does not change.
+    assert set(SmsCharge.objects.all_workspaces().filter(event=event_a).values_list("cost_per_sms", flat=True)) == {Decimal("25")}
+    assert api_a.get(f"/api/workspaces/{ws_a.slug}/events/{other.pk}/bill/").data["amount"] == invoiced_before
+    assert EventBill.objects.all_workspaces().get(event=other).status == "invoiced"
+    # The client is told, in their activity and by email.
+    assert AuditEvent.objects.filter(workspace=ws_a, kind="rate_changed").exists()
+    assert any("TZS 85" in m.subject for m in mailoutbox)
+
+
+def test_reprice_is_owner_only(api_a):
+    assert api_a.post("/api/platform/rates/reprice/", {}, format="json").status_code == 403

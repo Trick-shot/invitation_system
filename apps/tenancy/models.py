@@ -198,6 +198,7 @@ class AuditEvent(models.Model):
         DETAILS_CHANGED = "details_changed", "Workspace details changed"
         DELETION_SCHEDULED = "deletion_scheduled", "Deletion scheduled"
         RESTORED = "restored", "Restored"
+        RATE_CHANGED = "rate_changed", "SMS rate changed on an open bill"
 
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="audit_events")
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")

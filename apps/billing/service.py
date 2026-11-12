@@ -307,3 +307,86 @@ def sms_this_month(workspace) -> int:
 
 
 __all__ = ["record_charge", "event_bill", "workspace_billing", "earnings", "set_bill_status", "workspace_money", "sms_this_month", "event_for_workspace_message", "Q"]
+
+
+# ---------------------------------------------------------------------------
+# Re-pricing bills that are still open (decided 12 Nov 2026)
+# ---------------------------------------------------------------------------
+# Normally an SMS keeps the price of the day it was sent. The owner can choose to
+# charge bills that are still Open at today's price instead, for example after
+# setting the wrong rate at launch. Only the price moves: the Beem cost is a fact.
+# Invoiced and paid bills never change, and SMS sent on a client's own Beem keys
+# (price 0) are left alone.
+
+
+def _off_rate_open_charges(price):
+    from apps.tenancy.models import Workspace
+
+    return (
+        SmsCharge.objects.all_workspaces()
+        .filter(event__isnull=False, price_per_sms__gt=0, workspace__credential__isnull=True, workspace__status=Workspace.Status.ACTIVE)
+        .exclude(event__bill__status__in=[EventBill.Status.INVOICED, EventBill.Status.PAID])
+        .exclude(price_per_sms=price)
+    )
+
+
+def open_bills_preview() -> dict:
+    """Open bills holding SMS charged at another price than today's, and what they would come to."""
+    from apps.events.models import Event
+
+    price = SmsRates.current().price_per_sms
+    off = _off_rate_open_charges(price)
+    rows = []
+    for ev in Event.objects.all_workspaces().filter(pk__in=off.values("event_id")).select_related("workspace").order_by("date"):
+        all_qs = SmsCharge.objects.all_workspaces().filter(event=ev)
+        now = totals(all_qs)["billed"]
+        moving = off.filter(event=ev)
+        sms_moving = moving.aggregate(n=Coalesce(Sum("segments"), 0))["n"]
+        after = now - totals(moving)["billed"] + price * sms_moving
+        rows.append({"id": ev.pk, "name": ev.name, "workspace": ev.workspace.name, "workspace_id": ev.workspace_id, "sms": sms_moving, "prices_used": used(moving), "amount_now": now, "amount_after": after})
+    return {"price_per_sms": price, "events": rows, "amount_now": sum((r["amount_now"] for r in rows), ZERO), "amount_after": sum((r["amount_after"] for r in rows), ZERO)}
+
+
+def reprice_open_bills(*, by, notify: bool = True) -> dict:
+    """Charge every open bill at today's price. Logged in each client's activity; admins emailed if notify."""
+    from django.db import transaction
+
+    from apps.tenancy.models import AuditEvent
+
+    preview = open_bills_preview()
+    price = preview["price_per_sms"]
+    with transaction.atomic():
+        for r in preview["events"]:
+            n = _off_rate_open_charges(price).filter(event_id=r["id"]).update(price_per_sms=price)
+            if not n:
+                continue
+            AuditEvent.objects.create(
+                workspace_id=r["workspace_id"], actor=by, kind=AuditEvent.Kind.RATE_CHANGED,
+                summary=f"{r['name']}: SMS already sent now charged at TZS {rate_label([price])} (was {rate_label(r['prices_used'])}). Bill TZS {r['amount_now']:,.0f} to {r['amount_after']:,.0f}"[:300],
+            )
+        if notify:
+            transaction.on_commit(lambda: _tell_clients_repriced(preview))
+    return preview
+
+
+def _tell_clients_repriced(preview: dict) -> None:
+    from apps.accounts.emails import _send
+    from apps.tenancy.models import Membership, Workspace
+    from apps.tenancy.support import _site
+
+    by_ws: dict[int, list] = {}
+    for r in preview["events"]:
+        by_ws.setdefault(r["workspace_id"], []).append(r)
+    price = rate_label([preview["price_per_sms"]])
+    for ws_id, rows in by_ws.items():
+        ws = Workspace.objects.get(pk=ws_id)
+        lines = [f"{r['name']}: TZS {r['amount_now']:,.0f} becomes TZS {r['amount_after']:,.0f}" for r in rows]
+        for m in Membership.objects.filter(workspace=ws, role="admin", is_active=True).select_related("user"):
+            if m.user.email:
+                _send(
+                    m.user.email,
+                    f"Your SMS rate is now TZS {price}",
+                    "email/button.html",
+                    {"kicker": ws.name, "title": f"SMS are now TZS {price} each", "paragraphs": [f"SMS on bills that are still open are now charged at TZS {price}, including those already sent.", *lines, "Bills already invoiced or paid do not change."], "cta": "See your bill", "url": f"{_site()}/app/{ws.slug}/billing", "footer": f"Sent by Trickshot Invitations for {ws.name}."},
+                    f"SMS on your open bills are now charged at TZS {price} each, including those already sent.\n" + "\n".join(lines) + "\nBills already invoiced or paid do not change.",
+                )
