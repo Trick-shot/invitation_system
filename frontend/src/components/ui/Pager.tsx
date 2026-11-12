@@ -1,7 +1,8 @@
 /**
  * One pager for every table. Shows where you are ("51 to 100 of 312 guests"),
  * Previous and Next, and page numbers with gaps on wide screens.
- * Draws nothing when everything fits on one page, so short lists stay quiet.
+ * Shown under every table with rows, with a rows-per-page choice; the page
+ * buttons switch off when everything fits on one page.
  *
  * Server lists pass the API's page, pages and count. Lists that are already
  * fully loaded use usePaged() to slice them in the browser.
@@ -22,14 +23,25 @@ export function pageList(page: number, pages: number): number[] {
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-export function Pager({ page, pages, count, pageSize, noun = "rows", onPage }: { page: number; pages: number; count: number; pageSize: number; noun?: string; onPage: (p: number) => void }) {
-  if (pages <= 1) return null;
+export const PAGE_SIZES = [25, 50, 100];
+
+/**
+ * Always shown under a table that has rows, so you can see how many there are and
+ * how many are on screen. Page buttons switch off when everything fits on one page.
+ */
+export function Pager({ page, pages, count, pageSize, noun = "rows", onPage, onPageSize }: { page: number; pages: number; count: number; pageSize: number; noun?: string; onPage: (p: number) => void; onPageSize?: (n: number) => void }) {
+  if (count <= 0) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, count);
   return (
     <nav className="pager" aria-label="Pages">
       <span className="pager-range">{fmt(from)} to {fmt(to)} of {fmt(count)} {noun}</span>
       <div className="pager-btns">
+        {onPageSize && (
+          <label className="pager-size">Rows per page
+            <select value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))}>{PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}</select>
+          </label>
+        )}
         <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</button>
         <span className="pager-of">Page {page} of {pages}</span>
         {pageList(page, pages).map((n, i) => n === 0
@@ -40,6 +52,18 @@ export function Pager({ page, pages, count, pageSize, noun = "rows", onPage }: {
     </nav>
   );
 }
+
+/** Rows per page for one table, remembered in this browser. 25 unless the person picked otherwise. */
+export function usePageSize(table: string, fallback = 25) {
+  const [size, setSize] = useState<number>(() => {
+    try { const v = Number(localStorage.getItem(`rows:${table}`)); return PAGE_SIZES.includes(v) ? v : fallback; } catch { return fallback; }
+  });
+  const set = (n: number) => { setSize(n); try { localStorage.setItem(`rows:${table}`, String(n)); } catch { /* private mode: keep it for this visit */ } };
+  return [size, set] as const;
+}
+
+/** Row number across pages: the 3rd row of page 2 at 25 a page is 28. */
+export const rowNo = (page: number, pageSize: number, i: number) => (page - 1) * pageSize + i + 1;
 
 /** Page a list that is already in memory. Goes back to page 1 when the list shrinks under the current page. */
 export function usePaged<T>(rows: T[], pageSize = 25) {

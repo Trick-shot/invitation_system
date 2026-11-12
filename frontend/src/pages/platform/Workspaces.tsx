@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
 import type { EarningsData, Paginated, PlatformSummary, PlatformWorkspace } from "../../api/types";
-import { Badge, Button, ErrorState, Field, Input, Modal, Pager, SkelStats, Stat, Stagger, fmtDate, relTime, scrollToTable, useToast } from "../../components/ui";
+import { Badge, Button, ErrorState, Field, Input, Modal, Pager, SkelStats, rowNo, usePageSize, Stat, Stagger, fmtDate, relTime, scrollToTable, useToast } from "../../components/ui";
 import { tzs } from "./money";
 
 const setupBadge = (s: PlatformWorkspace["setup"], w?: PlatformWorkspace) =>
@@ -19,13 +19,15 @@ export default function Workspaces() {
   const [form, setForm] = useState({ name: "", default_country: "TZ", admin_email: "", admin_name: "", admin_phone: "" });
   const [err, setErr] = useState<ApiError | null>(null);
   const [q, setQ] = useState("");
+  const [size, setSize] = usePageSize("workspaces");
   const [paged, setPaged] = useState({ for: "", page: 1 });
-  const page = paged.for === q ? paged.page : 1;
+  const view = `${q}|${size}`;
+  const page = paged.for === view ? paged.page : 1;
   const top = useRef<HTMLDivElement>(null);
   // One page at a time; the tiles come from the server's totals so they count every workspace, not just this page.
   const list = useQuery({
-    queryKey: ["platform", "list", q, page],
-    queryFn: () => api<Paginated<PlatformWorkspace> & { summary: PlatformSummary }>(`/api/platform/workspaces/?page=${page}&page_size=50&q=${encodeURIComponent(q)}`),
+    queryKey: ["platform", "list", q, page, size],
+    queryFn: () => api<Paginated<PlatformWorkspace> & { summary: PlatformSummary }>(`/api/platform/workspaces/?page=${page}&page_size=${size}&q=${encodeURIComponent(q)}`),
     placeholderData: keepPreviousData,
   });
   const earn = useQuery({ queryKey: ["earnings", "now"], queryFn: () => api<EarningsData>("/api/platform/earnings/") });
@@ -50,12 +52,13 @@ export default function Workspaces() {
       <div className="toolbar"><div className="search" style={{ width: 300 }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden><circle cx="7" cy="7" r="4.75" stroke="currentColor" strokeWidth="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg><input placeholder="Search workspace, admin name or email" value={q} onChange={(e) => setQ(e.target.value)} /></div></div>
       <div className="panel" style={{ overflowX: "auto" }} ref={top}>
         <table className={`table paging ${list.isPlaceholderData ? "busy" : ""}`}>
-          <thead><tr><th>Workspace</th><th>Contact</th><th>Sends on</th><th className="money">SMS this month</th><th>Setup</th><th>Last active</th></tr></thead>
+          <thead><tr><th className="no">No.</th><th>Workspace</th><th>Contact</th><th>Sends on</th><th className="money">SMS this month</th><th>Setup</th><th>Last active</th></tr></thead>
           <tbody>
-            {!list.data && !list.isError && [0, 1, 2].map((i) => <tr key={i} aria-hidden><td colSpan={6}><div className="skeleton" style={{ height: 18 }} /></td></tr>)}
-            {list.data && rows.length === 0 && <tr><td colSpan={6} className="quiet" style={{ textAlign: "center", padding: 24 }}>{q ? `No workspace matches "${q}".` : "No workspaces yet. Create the first one with New workspace."}</td></tr>}
-            {rows.map((w) => (
+            {!list.data && !list.isError && [0, 1, 2].map((i) => <tr key={i} aria-hidden><td colSpan={7}><div className="skeleton" style={{ height: 18 }} /></td></tr>)}
+            {list.data && rows.length === 0 && <tr><td colSpan={7} className="quiet" style={{ textAlign: "center", padding: 24 }}>{q ? `No workspace matches "${q}".` : "No workspaces yet. Create the first one with New workspace."}</td></tr>}
+            {rows.map((w, i) => (
               <tr key={w.id} className="clickable" onClick={() => nav(`/platform/workspaces/${w.id}`)}>
+                <td className="no">{rowNo(list.data!.page, list.data!.page_size, i)}</td>
                 <td><b>{w.name}</b><div className="mono quiet" style={{ fontSize: 12 }}>{w.slug}</div></td>
                 <td>{w.contact ? (w.contact.name || w.contact.email) : <span className="quiet">None yet</span>}</td>
                 <td>{w.sends_on === "own_keys" ? "Their Beem keys" : "Your Beem, billed"}</td>
@@ -66,7 +69,7 @@ export default function Workspaces() {
             ))}
           </tbody>
         </table>
-        {list.data && <Pager page={list.data.page} pages={list.data.pages} count={list.data.count} pageSize={list.data.page_size} noun="workspaces" onPage={(p) => { setPaged({ for: q, page: p }); scrollToTable(top.current); }} />}
+        {list.data && <Pager page={list.data.page} pages={list.data.pages} count={list.data.count} pageSize={list.data.page_size} noun="workspaces" onPage={(p) => { setPaged({ for: view, page: p }); scrollToTable(top.current); }} onPageSize={setSize} />}
       </div>
       <div className="note"><b>Opening a workspace is logged and visible to the client</b><p>You can open any workspace read-only to help a client. Each visit appears in their activity. Changing anything needs edit mode: a reason, 30 minutes, and a summary sent to the client.</p></div>
       <Modal open={open} onClose={() => setOpen(false)} title="New workspace" sub="Creates the workspace and emails its first admin a set-password link."

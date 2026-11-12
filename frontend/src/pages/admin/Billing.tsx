@@ -7,7 +7,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, tokens, ws } from "../../api/client";
 import type { BillingData, EventBillData, HowToPay as HowToPayData } from "../../api/types";
-import { Button, ErrorState, Pager, SkelPanel, SkelStats, Stat, Stagger, fmtDate, scrollToTable, usePaged } from "../../components/ui";
+import { Button, ErrorState, Pager, SkelPanel, SkelStats, Stat, Stagger, fmtDate, rowNo, scrollToTable, usePageSize, usePaged } from "../../components/ui";
 import { BillBadge, rateChanged, rateLabel, tzs } from "../platform/money";
 import "../platform/platform.css";
 import { Topbar, useWorkspace } from "./Shell";
@@ -33,7 +33,8 @@ export default function Billing() {
   const running = b?.events.find((e) => e.bill.status === "open");
   const paidCount = b?.events.filter((e) => e.bill.status === "paid").length ?? 0;
   const total = b ? b.events.reduce((a, e) => ({ sms: a.sms + e.sms, amount: a.amount + e.amount }), { sms: 0, amount: 0 }) : null;
-  const pg = usePaged(b?.events ?? [], 25);
+  const [size, setSize] = usePageSize("billing");
+  const pg = usePaged(b?.events ?? [], size);
   const top = useRef<HTMLDivElement>(null);
   return (
     <>
@@ -67,7 +68,7 @@ export default function Billing() {
                     {total && b.events.length > 0 && <tr className="total"><td>Total, {b.events.length} event{b.events.length === 1 ? "" : "s"}</td><td /><td className="money">{tzs(total.sms)}</td><td /><td className="money">{tzs(total.amount)}</td><td /></tr>}
                   </tbody>
                 </table>
-                <Pager page={pg.page} pages={pg.pages} count={pg.count} pageSize={pg.pageSize} noun="events" onPage={(p) => { pg.setPage(p); scrollToTable(top.current); }} />
+                <Pager page={pg.page} pages={pg.pages} count={pg.count} pageSize={pg.pageSize} noun="events" onPage={(p) => { pg.setPage(p); scrollToTable(top.current); }} onPageSize={(n) => { setSize(n); pg.setPage(1); }} />
               </div>
               {b.to_pay_now > 0 && <HowToPay pay={b.how_to_pay} amount={b.to_pay_now} due={invoiced?.bill.due_at ?? null} />}
               <div className="note"><b>How the amount is worked out</b><p>{rateChanged(b.prices_used, b.price_per_sms) ? `Each SMS is charged at the price on the day it was sent: TZS ${rateLabel(b.prices_used)} so far, TZS ${tzs(b.price_per_sms)} from now on. ` : `Every SMS costs TZS ${tzs(b.price_per_sms)}. `}A message up to 160 characters is 1 SMS, longer ones are 2 or more, and an emoji or curly quote lowers the limit to 70. Open a bill to see every message it charges for, or download it as a spreadsheet.</p></div>
@@ -82,8 +83,9 @@ export function EventBillPage() {
   const { slug } = useWorkspace();
   const { eventId = "" } = useParams();
   const [page, setPage] = useState(1);
+  const [size, setSize] = usePageSize("bill-messages", 50);
   const chargesTop = useRef<HTMLDivElement>(null);
-  const q = useQuery({ queryKey: ["event-bill", slug, eventId, page], queryFn: () => api<EventBillData>(`${ws(slug)}/events/${eventId}/bill/?page=${page}`), placeholderData: keepPreviousData });
+  const q = useQuery({ queryKey: ["event-bill", slug, eventId, page, size], queryFn: () => api<EventBillData>(`${ws(slug)}/events/${eventId}/bill/?page=${page}&page_size=${size}`), placeholderData: keepPreviousData });
   const b = q.data;
   return (
     <>
@@ -118,10 +120,10 @@ export function EventBillPage() {
                 <div className="panel" style={{ overflowX: "auto" }} ref={chargesTop}>
                   <div className="panel-head"><h3>Every message charged</h3><Button size="sm" onClick={() => download(`${ws(slug)}/events/${eventId}/bill/?download=csv`, `${slug}-${eventId}-bill.csv`)}>Download all</Button></div>
                   <table className={`table paging ${q.isPlaceholderData ? "busy" : ""}`}>
-                    <thead><tr><th>Sent to</th><th>What</th><th className="money">SMS</th><th className="money">Price per SMS</th><th className="money">Amount, TZS</th><th>When</th></tr></thead>
-                    <tbody>{b.charges.map((c, i) => <tr key={i}><td>{c.recipient || <span className="quiet">Unknown</span>}</td><td>{c.label}</td><td className="money">{c.sms}</td><td className="money">{tzs(c.price_per_sms)}</td><td className="money">{tzs(c.amount)}</td><td className="quiet">{when(c.at)}</td></tr>)}</tbody>
+                    <thead><tr><th className="no">No.</th><th>Sent to</th><th>What</th><th className="money">SMS</th><th className="money">Price per SMS</th><th className="money">Amount, TZS</th><th>When</th></tr></thead>
+                    <tbody>{b.charges.map((c, i) => <tr key={i}><td className="no">{rowNo(b.charges_page.page, b.charges_page.page_size, i)}</td><td>{c.recipient || <span className="quiet">Unknown</span>}</td><td>{c.label}</td><td className="money">{c.sms}</td><td className="money">{tzs(c.price_per_sms)}</td><td className="money">{tzs(c.amount)}</td><td className="quiet">{when(c.at)}</td></tr>)}</tbody>
                   </table>
-                  <Pager page={b.charges_page.page} pages={b.charges_page.pages} count={b.charges_page.count} pageSize={b.charges_page.page_size} noun="messages" onPage={(p) => { setPage(p); scrollToTable(chargesTop.current); }} />
+                  <Pager page={b.charges_page.page} pages={b.charges_page.pages} count={b.charges_page.count} pageSize={b.charges_page.page_size} noun="messages" onPage={(p) => { setPage(p); scrollToTable(chargesTop.current); }} onPageSize={(n) => { setSize(n); setPage(1); }} />
                 </div>
               )}
               {b.bill.status === "invoiced" && b.how_to_pay && <HowToPay pay={b.how_to_pay} amount={b.amount} due={b.bill.due_at} />}

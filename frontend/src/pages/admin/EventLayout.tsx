@@ -29,11 +29,13 @@ function usePrefetchTabs(slug: string, eventId: string, ready: boolean) {
       const base = ev(slug, eventId);
       const pf = (queryKey: unknown[], url: string, allow404 = false) =>
         qc.prefetchQuery({ queryKey, staleTime: 30_000, queryFn: () => api(url).catch((e: ApiError) => { if (allow404 && e.status === 404) return null; throw e; }) });
-      pf(["invitations", slug, eventId, "", "", 1], `${base}/invitations/?page=1&page_size=50&filter=&q=`);
+      const size = (() => { try { return [25, 50, 100].includes(Number(localStorage.getItem("rows:guests"))) ? Number(localStorage.getItem("rows:guests")) : 25; } catch { return 25; } })();
+      pf(["invitations", slug, eventId, "", "", 1, size], `${base}/invitations/?page=1&page_size=${size}&filter=&q=`);
       pf(["template", slug, eventId], `${base}/template/`, true);
       pf(["message", slug, eventId], `${base}/message/`);
       pf(["scans-grouped", slug, eventId], `${base}/scans/guests/`);
-      pf(["members", slug, 1], `${ws(slug)}/members/?page=1&page_size=50`);
+      const staffSize = (() => { try { return [25, 50, 100].includes(Number(localStorage.getItem("rows:staff"))) ? Number(localStorage.getItem("rows:staff")) : 25; } catch { return 25; } })();
+      pf(["members", slug, 1, staffSize], `${ws(slug)}/members/?page=1&page_size=${staffSize}`);
     }, 1500);
   }, [ready, slug, eventId, qc]);
 }

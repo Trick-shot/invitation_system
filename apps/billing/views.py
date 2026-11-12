@@ -54,6 +54,15 @@ def _page(request) -> int:
         return 1
 
 
+def _per_page(request) -> int | None:
+    """?page_size= for a bill's messages, 1 to 200 like every other list."""
+    try:
+        n = int(request.query_params.get("page_size") or 0)
+    except ValueError:
+        return None
+    return min(max(n, 1), 200) if n else None
+
+
 class EventBillView(APIView):
     """Admins and coordinators: the Send page shows the running bill next to the estimate."""
 
@@ -69,4 +78,4 @@ class EventBillView(APIView):
                 data = event_bill(ev, with_cost=False, per_page=1_000_000)
                 rows = [[c["recipient"], c["label"], c["sms"], c["price_per_sms"], c["amount"], c["at"].isoformat()] for c in data["charges"]]
                 return _csv(f"{ws.slug}-{ev.pk}-bill.csv", ["Sent to", "What", "SMS", f"Price per SMS ({data['currency']})", f"Amount ({data['currency']})", "When"], rows)
-            return Response(event_bill(ev, with_cost=False, page=_page(request)))
+            return Response(event_bill(ev, with_cost=False, page=_page(request), per_page=_per_page(request)))

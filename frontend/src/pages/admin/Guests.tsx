@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tansta
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, ErrorState, Field, Input, Modal, Pager, SkelRows, Track, scrollToTable, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, ErrorState, Field, Input, Modal, Pager, SkelRows, Track, rowNo, scrollToTable, usePageSize, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
 import { GuestSheet } from "./GuestSheet";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
@@ -26,12 +26,13 @@ export default function Guests() {
   const navigate = useNavigate();
   const [open, setOpen] = useState<Invitation | null>(null);
   const qc = useQueryClient();
-  const view = `${filter}|${q}`;
+  const [size, setSize] = usePageSize("guests");
+  const view = `${filter}|${q}|${size}`;
   const page = paged.for === view ? paged.page : 1;
   const setPage = (p: number) => setPaged({ for: view, page: p });
-  const key = ["invitations", slug, eventId, filter, q, page];
+  const key = ["invitations", slug, eventId, filter, q, page, size];
   // The rows on screen stay (dimmed) while the next page loads, so paging never flashes a skeleton.
-  const list = useQuery({ queryKey: key, queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page=${page}&page_size=50&filter=${filter}&q=${encodeURIComponent(q)}`), placeholderData: keepPreviousData });
+  const list = useQuery({ queryKey: key, queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page=${page}&page_size=${size}&filter=${filter}&q=${encodeURIComponent(q)}`), placeholderData: keepPreviousData });
   const tableTop = useRef<HTMLDivElement>(null);
   const hasPending = list.data?.results.some((g) => g.card_status === "pending" || g.card_status === "generating");
   useEffect(() => { if (!hasPending) return; const t = setInterval(() => list.refetch(), 3000); return () => clearInterval(t); }, [hasPending, list]);
@@ -56,8 +57,8 @@ export default function Guests() {
         <div className="panel">
           {list.isLoading && <SkelRows rows={8} />}
           {list.isError && !list.data && <ErrorState title="The guest list did not load" onRetry={() => list.refetch()} />}
-          {list.isSuccess && total === 0 && <div className="empty" style={{ padding: 32 }}><h3>No guests match</h3><p>{q ? `Nothing found for "${q}".` : "Nobody is in this group yet."}</p><div style={{ marginTop: 8 }}><Button variant="ghost" onClick={() => { setQ(""); setParams({}); }}>Show everyone</Button></div></div>}
-          <div ref={tableTop} className={`paging ${list.isPlaceholderData ? "busy" : ""}`}>
+          {list.isSuccess && total === 0 && <NoMatch q={q} filter={filter} onReset={() => { setQ(""); setParams({}); }} />}
+          <div ref={tableTop} className={`paging ${list.isPlaceholderData ? "busy" : ""}`} hidden={list.isSuccess && total === 0}>
           <div className="m-list">
             {(list.data?.results ?? []).map((g) => (
               <div key={g.id} className="m-guest" onClick={() => setOpen(g)} role="button" tabIndex={0}>
@@ -71,10 +72,11 @@ export default function Guests() {
             ))}
           </div>
           <table className="table d-only">
-            <thead><tr><th>Guest</th><th>Phone</th><th>Admits</th><th>Card</th><th>Delivery</th><th>Arrivals</th><th /></tr></thead>
+            <thead><tr><th className="no">No.</th><th>Guest</th><th>Phone</th><th>Admits</th><th>Card</th><th>Delivery</th><th>Arrivals</th><th /></tr></thead>
             <tbody>
-              {(list.data?.results ?? []).map((g) => (
+              {(list.data?.results ?? []).map((g, i) => (
                 <tr key={g.id} className="clickable" onClick={() => setOpen(g)}>
+                  <td className="no">{rowNo(list.data!.page, list.data!.page_size, i)}</td>
                   <td><div className="row"><Avatar initials={g.initials} /><span>{g.name}</span></div></td>
                   <td className="num">{g.phone_display}</td>
                   <td className="num">{g.capacity}</td>
@@ -87,7 +89,7 @@ export default function Guests() {
             </tbody>
           </table>
           </div>
-          {list.data && <Pager page={list.data.page} pages={list.data.pages} count={total} pageSize={list.data.page_size} noun="guests" onPage={(p) => { setPage(p); scrollToTable(tableTop.current); }} />}
+          {list.data && <Pager page={list.data.page} pages={list.data.pages} count={total} pageSize={list.data.page_size} noun="guests" onPage={(p) => { setPage(p); scrollToTable(tableTop.current); }} onPageSize={setSize} />}
         </div>
       )}
       <AddGuestModal open={adding} onClose={() => setAdding(false)} onAdded={invalidate} />
@@ -257,4 +259,15 @@ export function TemplateDownload({ label = "Download template" }: { label?: stri
     } finally { setBusy(false); }
   };
   return <Button size="sm" variant="ink" loading={busy} onClick={run}>{label}</Button>;
+}
+
+/** Empty result for a search or a filter. Says what the empty group means, so "none failed" reads as good news. */
+function NoMatch({ q, filter, onReset }: { q: string; filter: Filter; onReset: () => void }) {
+  const [title, text] = q
+    ? [`Nothing found for "${q}"`, "Check the spelling, or search by phone number instead."]
+    : filter === "failed" ? ["No failed messages", "Every invitation sent so far reached the network. If one fails, it shows here so you can send it again."]
+    : filter === "not_sent" ? ["Everyone has their invitation", "Guests you add from now on show here until you send to them."]
+    : filter === "not_arrived" ? ["Everyone has arrived", "Every guest on this list has been scanned in at the door."]
+    : ["No guests match", "Nobody is in this group yet."];
+  return <Empty illustration="search-guests" title={title} action={<Button variant="ghost" onClick={onReset}>Show everyone</Button>}>{text}</Empty>;
 }

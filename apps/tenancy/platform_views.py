@@ -287,9 +287,9 @@ class PlatformEventBillView(APIView):
 
     def get(self, request, pk):
         from apps.billing.service import event_bill
-        from apps.billing.views import _page
+        from apps.billing.views import _page, _per_page
 
-        return Response(event_bill(self._event(pk), with_cost=True, page=_page(request)))
+        return Response(event_bill(self._event(pk), with_cost=True, page=_page(request), per_page=_per_page(request)))
 
     def post(self, request, pk):
         from apps.billing.models import EventBill

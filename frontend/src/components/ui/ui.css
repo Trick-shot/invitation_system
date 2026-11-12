@@ -195,9 +195,14 @@ input[type="date"].input::-webkit-date-and-time-value, input[type="time"].input:
 .pager-num.on { background: var(--bg-accent-subtle); color: var(--text-accent); font-weight: 600; }
 .pager-gap { color: var(--text-tertiary); padding: 0 2px; }
 .pager-of { display: none; color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.pager-size { display: flex; align-items: center; gap: 8px; margin-right: 12px; color: var(--text-secondary); font-size: 14px; }
+.pager-size select { height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--border-default); border-radius: var(--r-md); background: var(--bg-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2378716c' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; appearance: none; -webkit-appearance: none; color: var(--text-primary); font-size: 14px; cursor: pointer; }
+/* Row number: quiet, right-aligned, tabular so 9 and 10 line up. */
+.table th.no, .table td.no { width: 48px; text-align: right; padding-right: 4px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 @media (max-width: 820px) {
   .pager { padding: 12px 16px; }
   .pager-num, .pager-gap { display: none; }
+  .pager-size { display: none; } /* phones keep 25 a page; the choice is a desk thing */
   .pager-of { display: inline; padding: 0 6px; }
   .pager-range { width: 100%; }
 }
