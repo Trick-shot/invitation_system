@@ -1,6 +1,8 @@
 .sc { min-height: 100vh; min-height: 100dvh; background: var(--bg-surface); display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
 .sc-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 16px; }
-.sc-head .ev { font-weight: 600; } .sc-head .gate { color: var(--text-tertiary); font-size: 13px; }
+.sc-head .ev { font-weight: 600; }
+.sc-back { flex: none; display: grid; place-items: center; width: 36px; height: 36px; margin: -6px 0 0 -6px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-surface); color: var(--text-primary); cursor: pointer; }
+.sc-back:hover { background: var(--bg-hover); } .sc-head .gate { color: var(--text-tertiary); font-size: 13px; }
 .sc-head .count { text-align: right; } .sc-head .count b { display: block; font-family: var(--font-display); font-size: 26px; color: var(--text-accent); line-height: 1; } .sc-head .count span { font-size: 12px; color: var(--text-tertiary); }
 .cam { position: relative; margin: 0 14px; border-radius: 22px; overflow: hidden; background: #16130f; flex: 1; min-height: 360px; display: grid; place-items: center; }
 .cam video, .cam #reader, .cam #reader video { width: 100% !important; height: 100% !important; object-fit: cover; position: absolute; inset: 0; }
