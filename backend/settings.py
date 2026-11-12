@@ -7,6 +7,7 @@ need editing between a laptop and the production server.
 """
 
 from datetime import timedelta
+import logging
 from pathlib import Path
 
 from decouple import Csv, config
@@ -187,3 +188,31 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": config("LOG_LEVEL", default="INFO")},
 }
+
+
+# --- Error monitoring -------------------------------------------------------
+# Off unless SENTRY_DSN is set, so local runs and CI never report.
+SENTRY_DSN = config("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    def _scrub(event, hint):
+        # Guest names and phone numbers travel in request bodies (imports, scans).
+        # Never send bodies or cookies to Sentry; the stack trace is enough to fix a bug.
+        req = event.get("request") or {}
+        req.pop("data", None)
+        req.pop("cookies", None)
+        return event
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=config("SENTRY_ENVIRONMENT", default="production"),
+        release=config("SENTRY_RELEASE", default=None) or ((BASE_DIR / ".release").read_text().strip() if (BASE_DIR / ".release").exists() else None),
+        integrations=[DjangoIntegration(), LoggingIntegration(event_level=logging.ERROR)],
+        traces_sample_rate=config("SENTRY_TRACES_SAMPLE_RATE", default=0.1, cast=float),
+        send_default_pii=False,
+        max_request_body_size="never",
+        before_send=_scrub,
+    )

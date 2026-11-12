@@ -8,7 +8,12 @@ git -C "$APP_DIR" reset -q --hard "origin/$BRANCH"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 sudo -u "$APP_USER" -H bash -c "export PIP_CACHE_DIR=$APP_DIR/.cache/pip; cd $APP_DIR && .venv/bin/pip install -q -r requirements.txt && .venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput"
 [ -f /etc/invitations-build.env ] && . /etc/invitations-build.env
-sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX:-}\$PATH npm_config_cache=$APP_DIR/.cache/npm; cd $APP_DIR/frontend && npm ci --no-audit --no-fund && npm run build"
+# Release tag shared by backend and frontend, so a Sentry issue points at the deploy that caused it.
+RELEASE="invitations@$(git -C "$APP_DIR" rev-parse --short HEAD)"
+echo "$RELEASE" > "$APP_DIR/.release"
+# The frontend DSN is public by design (it ships to every browser); read it from the server .env at build time.
+VITE_SENTRY_DSN="$(grep -E '^VITE_SENTRY_DSN=' "$APP_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)"
+sudo -u "$APP_USER" -H bash -c "export PATH=${NODE_PATH_PREFIX:-}\$PATH npm_config_cache=$APP_DIR/.cache/npm VITE_SENTRY_DSN='$VITE_SENTRY_DSN' VITE_SENTRY_RELEASE='$RELEASE'; cd $APP_DIR/frontend && npm ci --no-audit --no-fund && npm run build"
 # Unit files live in the repo; pick up changes to them too.
 sed "s#/srv/invitations#${APP_DIR}#g" "$APP_DIR/deploy/gunicorn.service" > /etc/systemd/system/invitations.service
 sed "s#/srv/invitations#${APP_DIR}#g" "$APP_DIR/deploy/qcluster.service" > /etc/systemd/system/invitations-q.service

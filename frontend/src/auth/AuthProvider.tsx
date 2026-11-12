@@ -1,3 +1,4 @@
+import { identify } from "../monitoring";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, tokens } from "../api/client";
@@ -27,6 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  // Errors in Sentry carry a user id (never a name or email) so repeats from one person can be grouped.
+  useEffect(() => { identify(me ? { id: me.id } : null, me?.memberships[0]?.workspace?.slug); }, [me]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const t = await api<{ access: string; refresh: string }>("/api/auth/token/", { method: "POST", body: { email, password }, auth: false });
