@@ -72,8 +72,9 @@ class PlatformWorkspaceSerializer(serializers.ModelSerializer):
             "admin_email",
             "admin_name",
             "admin_phone",
+            "delete_after",
         )
-        read_only_fields = ("slug", "created_at")
+        read_only_fields = ("slug", "created_at", "status", "delete_after")
 
     def get_messages_this_month(self, ws):
         from django.utils import timezone

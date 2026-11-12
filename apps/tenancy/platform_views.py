@@ -72,11 +72,26 @@ def _detail(ws) -> dict:
             {"kind": a.kind, "summary": a.summary, "reason": a.reason, "at": a.created_at}
             for a in AuditEvent.objects.filter(workspace=ws)[:20]
         ],
+        "deletion": _deletion(ws),
         "support": next(
             ({"id": s.pk, "mode": s.mode, "expires_at": s.expires_at, "reason": s.reason} for s in SupportSession.objects.filter(workspace=ws, ended_at__isnull=True) if s.is_active),
             None,
         ),
     }
+
+
+def _deletion(ws) -> dict | None:
+    from . import deletion
+
+    if ws.status != Workspace.Status.DELETING:
+        return {"scheduled": False, "grace_days": deletion.GRACE_DAYS, "removes": deletion.preview(ws)}
+    by = ws.deletion_requested_by
+    return {"scheduled": True, "delete_after": ws.delete_after, "reason": ws.deletion_reason, "by": support.name_of(by) if by else "", "grace_days": deletion.GRACE_DAYS, "removes": deletion.preview(ws)}
+
+
+def _not_deleting(ws):
+    if ws.status == Workspace.Status.DELETING:
+        raise ValidationError({"detail": "This workspace is being deleted. Restore it first."})
 
 
 class PlatformWorkspaceDetailMixin:
@@ -91,6 +106,7 @@ class PlatformWorkspaceDetailMixin:
     def details(self, request, pk=None):
         """Change a client's details. Needs a reason; logged; the client's admins get an email."""
         ws = self.get_object()
+        _not_deleting(ws)
         reason = (request.data.get("reason") or "").strip()
         if len(reason) < 5:
             raise ValidationError({"reason": ["Say why, so the client understands the change."]})
@@ -145,6 +161,7 @@ class PlatformWorkspaceDetailMixin:
     def support(self, request, pk=None):
         """{mode: view|edit, reason}: open the workspace read-only, or enter edit mode for 30 minutes."""
         ws = self.get_object()
+        _not_deleting(ws)
         mode = request.data.get("mode", "view")
         reason = (request.data.get("reason") or "").strip()
         if mode == "edit" and len(reason) < 5:
@@ -155,6 +172,36 @@ class PlatformWorkspaceDetailMixin:
                 support.end(s)
         s = support.start(request.user, ws, mode=mode, reason=reason)
         return Response({"id": s.pk, "mode": s.mode, "expires_at": s.expires_at, "slug": ws.slug}, status=201)
+
+
+class PlatformWorkspaceDeletionMixin:
+    @action(detail=True, methods=["post"], url_path="delete")
+    def schedule_delete(self, request, pk=None):
+        """{reason, confirm}: close the workspace now and remove it for good after the hold."""
+        from . import deletion
+
+        ws = self.get_object()
+        reason = (request.data.get("reason") or "").strip()
+        if len(reason) < 5:
+            raise ValidationError({"reason": ["Say why. It is kept with the workspace until it goes."]})
+        if (request.data.get("confirm") or "").strip().casefold() != ws.name.strip().casefold():
+            raise ValidationError({"confirm": ["Type the workspace name exactly as shown."]})
+        try:
+            deletion.schedule(ws, by=request.user, reason=reason)
+        except deletion.DeletionError as exc:
+            raise ValidationError({"detail": str(exc)})
+        return Response({**self.get_serializer(ws).data, **_detail(ws)})
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        from . import deletion
+
+        ws = self.get_object()
+        try:
+            deletion.restore(ws, by=request.user)
+        except deletion.DeletionError as exc:
+            raise ValidationError({"detail": str(exc)})
+        return Response({**self.get_serializer(ws).data, **_detail(ws)})
 
 
 def _tell_admins(ws, actor, changes, reason):
@@ -243,5 +290,64 @@ class SmsRatesView(APIView):
         return self.get(request)
 
 
-class PlatformWorkspaceViewSet(PlatformWorkspaceDetailMixin, _PlatformWorkspaceList):
+class PlatformWorkspaceViewSet(PlatformWorkspaceDeletionMixin, PlatformWorkspaceDetailMixin, _PlatformWorkspaceList):
     """The owner's workspaces: list and create (above), detail, change details and support access."""
+
+
+class PlatformSettingsView(APIView):
+    """The owner's own settings: how Trickshot shows up on bills and emails."""
+
+    permission_classes = [IsPlatformOwner]
+    FIELDS = ("business_name", "support_email", "support_phone", "payment_instructions", "invoice_due_days")
+
+    def _out(self, p):
+        return {**{f: getattr(p, f) for f in self.FIELDS}, "updated_at": p.updated_at}
+
+    def get(self, request):
+        from .models import PlatformSettings
+
+        return Response(self._out(PlatformSettings.current()))
+
+    def patch(self, request):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from django.core.validators import validate_email
+
+        from .models import PlatformSettings
+
+        p = PlatformSettings.current()
+        errors = {}
+        data = {f: request.data[f] for f in self.FIELDS if f in request.data}
+        if "business_name" in data:
+            data["business_name"] = str(data["business_name"]).strip()
+            if not data["business_name"]:
+                errors["business_name"] = ["Clients see this on every bill."]
+        if "support_email" in data:
+            data["support_email"] = str(data["support_email"]).strip()
+            try:
+                validate_email(data["support_email"])
+            except DjangoValidationError:
+                errors["support_email"] = ["Enter an email address clients can write to."]
+        if data.get("support_phone"):
+            from apps.invitations.phones import PhoneError, normalise
+
+            try:
+                data["support_phone"] = normalise(str(data["support_phone"]), "TZ")
+            except PhoneError as exc:
+                errors["support_phone"] = [str(exc)]
+        if "payment_instructions" in data:
+            data["payment_instructions"] = str(data["payment_instructions"]).strip()[:2000]
+        if "invoice_due_days" in data:
+            try:
+                d = int(data["invoice_due_days"])
+            except (TypeError, ValueError):
+                d = -1
+            if not 1 <= d <= 90:
+                errors["invoice_due_days"] = ["Between 1 and 90 days."]
+            data["invoice_due_days"] = d
+        if errors:
+            raise ValidationError(errors)
+        for k, v in data.items():
+            setattr(p, k, v)
+        p.updated_by = request.user
+        p.save()
+        return Response(self._out(p))

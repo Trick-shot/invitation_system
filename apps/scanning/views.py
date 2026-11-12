@@ -46,7 +46,7 @@ class ScanEventsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        ws_ids = Membership.objects.filter(user=request.user, is_active=True).values_list("workspace_id", flat=True)
+        ws_ids = Membership.objects.filter(user=request.user, is_active=True, workspace__status="active").values_list("workspace_id", flat=True)
         events = (
             Event.objects.all_workspaces()
             .filter(workspace_id__in=ws_ids)

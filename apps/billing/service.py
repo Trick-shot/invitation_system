@@ -89,6 +89,14 @@ def by_kind(qs, *, with_cost: bool) -> list[dict]:
     return rows
 
 
+def how_to_pay() -> dict:
+    """What the client needs to settle a bill, from the owner's platform settings."""
+    from apps.tenancy.models import PlatformSettings
+
+    p = PlatformSettings.current()
+    return {"business_name": p.business_name, "instructions": p.payment_instructions, "support_email": p.support_email, "support_phone": p.support_phone, "due_days": p.invoice_due_days}
+
+
 def bill_of(event) -> EventBill:
     bill, _ = EventBill.objects.all_workspaces().get_or_create(event=event, defaults={"workspace_id": event.workspace_id})
     return bill
@@ -132,6 +140,8 @@ def event_bill(event, *, with_cost: bool, latest: int = 20) -> dict:
     }
     if with_cost:
         data.update(cost=t["cost"], profit=t["profit"], cost_per_sms=rates.cost_per_sms)
+    else:
+        data["how_to_pay"] = how_to_pay()
     return data
 
 
@@ -163,6 +173,7 @@ def workspace_billing(workspace) -> dict:
         "paid_this_year": paid_year,
         "sms_this_year": sms_year,
         "events": rows,
+        "how_to_pay": how_to_pay(),
     }
 
 
@@ -172,6 +183,18 @@ def month_range(year: int, month: int):
     return start, end
 
 
+def _with_retired(t: dict, year: int, month: int) -> dict:
+    """Add the month's money from deleted workspaces (anonymous totals) to a month's totals."""
+    from .models import RetiredTotal
+
+    r = RetiredTotal.objects.filter(year=year, month=month).first()
+    if r is None:
+        return t
+    t = {**t, "sms": t["sms"] + r.sms, "cost": t["cost"] + r.cost, "billed": t["billed"] + r.billed}
+    t["profit"] = t["billed"] - t["cost"]
+    return t
+
+
 def earnings(year: int, month: int) -> dict:
     """The owner's Earnings page for one month, plus profit for the six months up to it."""
     from apps.events.models import Event
@@ -179,12 +202,12 @@ def earnings(year: int, month: int) -> dict:
     start, end = month_range(year, month)
     all_rows = SmsCharge.objects.all_workspaces()
     month_qs = all_rows.filter(created_at__gte=start, created_at__lt=end)
-    t = totals(month_qs)
+    t = _with_retired(totals(month_qs), year, month)
     history = []
     y, m = year, month
     for _ in range(6):
         s, e = month_range(y, m)
-        history.append({"year": y, "month": m, "profit": totals(all_rows.filter(created_at__gte=s, created_at__lt=e))["profit"]})
+        history.append({"year": y, "month": m, "profit": _with_retired(totals(all_rows.filter(created_at__gte=s, created_at__lt=e)), y, m)["profit"]})
         y, m = (y - 1, 12) if m == 1 else (y, m - 1)
     history.reverse()
     # Events with charges this month, plus any not yet paid (money still owed shows until settled).
@@ -219,7 +242,7 @@ def set_bill_status(event, status: str) -> EventBill:
     bill.status = status
     if status == EventBill.Status.INVOICED:
         bill.invoiced_at = bill.invoiced_at or now
-        bill.due_at = bill.due_at or (timezone.localdate() + timedelta(days=14))
+        bill.due_at = bill.due_at or (timezone.localdate() + timedelta(days=how_to_pay()["due_days"]))
         bill.paid_at = None
     elif status == EventBill.Status.PAID:
         bill.paid_at = now

@@ -5,16 +5,16 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from apps.accounts.views import MemberViewSet
+from apps.billing.views import EventBillView, WorkspaceBillingView
 from apps.events.views import EventViewSet
 from apps.invitations.views import InvitationViewSet, PublicInvitationView
 from apps.messaging.views import DeliveryReportView
 from apps.scanning.views import ScanEventsView, ScanLogViewSet, ScanSearchView, ScanView
-from apps.billing.views import EventBillView, WorkspaceBillingView
-from apps.tenancy.platform_views import EarningsView, PlatformEventBillView, PlatformWorkspaceViewSet, SmsRatesView
+from apps.tenancy.platform_views import EarningsView, PlatformEventBillView, PlatformSettingsView, PlatformWorkspaceViewSet, SmsRatesView
 from apps.tenancy.settings_views import (
+    WorkspaceActivityView,
     WorkspaceCredentialView,
     WorkspaceExportView,
-    WorkspaceActivityView,
     WorkspaceSettingsView,
 )
 
@@ -34,6 +34,7 @@ urlpatterns = [
     path("api/", include("apps.accounts.urls")),
     path("api/platform/earnings/", EarningsView.as_view(), name="platform-earnings"),
     path("api/platform/rates/", SmsRatesView.as_view(), name="platform-rates"),
+    path("api/platform/settings/", PlatformSettingsView.as_view(), name="platform-settings"),
     path("api/platform/events/<int:pk>/bill/", PlatformEventBillView.as_view(), name="platform-event-bill"),
     path("api/platform/", include(platform.urls)),
     path("api/workspaces/<slug:workspace_slug>/", include(ws.urls)),

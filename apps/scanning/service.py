@@ -102,4 +102,5 @@ def admit(
 
 
 def staff_membership(user, event: Event) -> Membership | None:
-    return Membership.objects.filter(user=user, workspace=event.workspace, is_active=True).first()
+    # A suspended or closing workspace cannot admit anyone.
+    return Membership.objects.filter(user=user, workspace=event.workspace, is_active=True, workspace__status="active").first()

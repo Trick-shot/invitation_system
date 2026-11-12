@@ -6,8 +6,8 @@ Everything secret or environment-specific comes from the environment
 need editing between a laptop and the production server.
 """
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from pathlib import Path
 
 from decouple import Csv, config

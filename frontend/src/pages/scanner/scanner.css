@@ -9,14 +9,25 @@
 .reticle i { position: absolute; width: 28px; height: 28px; border: 3px solid #fff; border-radius: 4px; }
 .reticle i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; } .reticle i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
 .reticle i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; } .reticle i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
-.flash { position: absolute; inset: 0; pointer-events: none; }
+/* Overlays on the camera never mount or unmount: each sits on its own layer from the start and only
+   its opacity or position changes. That keeps iPhone Safari from rebuilding the video's layer mid-scan. */
+.flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; will-change: opacity; transition: opacity .2s ease-out; }
+.flash.on { opacity: .88; }
 /* No scan line or pulsing corners: the steady frame is calmer, and the camera itself shows it is live. */
 .flash.ok { background: var(--verdict-admitted); } .flash.bad { background: var(--verdict-full); } .flash.warn { background: var(--verdict-unknown); }
 .icon-btn { width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; }
 .cam .hint { position: absolute; left: 20px; right: 20px; top: calc(42% + 140px); text-align: center; color: rgba(255,255,255,.85); font-size: 15px; pointer-events: none; }
-.cam .checking { position: absolute; bottom: 16px; z-index: 2; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.cam .checking { position: absolute; bottom: 16px; z-index: 2; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 13px; display: flex; gap: 8px; align-items: center; opacity: 0; will-change: opacity; transition: opacity .15s ease-out; pointer-events: none; }
+/* Most answers land in under a third of a second; "Checking" only shows when the network is slow, so it never flashes. */
+.cam .checking.on { opacity: 1; transition-delay: .3s; }
 .sc-foot { padding: 14px 24px 22px; display: flex; flex-direction: column; gap: 10px; }
-.sheet { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: 0; width: 100%; max-width: 480px; overflow: hidden; background: var(--bg-surface); border-radius: 24px 24px 0 0; padding: 24px 24px calc(28px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 24px rgba(26,20,41,.12); z-index: 30; }
+.sheet { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: 0; width: 100%; max-width: 480px; overflow: hidden; background: var(--bg-surface); border-radius: 24px 24px 0 0; padding: 24px 24px calc(28px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 24px rgba(26,20,41,.12); z-index: 30;
+  /* Parked below the screen. It slides out in .24s, then hides so its shadow and buttons are gone too. */
+  transform: translateY(calc(100% + 32px)); visibility: hidden; will-change: transform;
+  transition: transform .24s var(--ease-leave), visibility 0s linear .24s; }
+/* In after the tint has started (.16s), so the colour reads first and the words second. */
+.sheet.open { transform: translateY(0); visibility: visible; transition: transform .32s var(--ease-move) .16s, visibility 0s linear 0s; }
+.sheet.offline { background: #262220; }
 .sheet.ok { background: var(--verdict-admitted-bg); } .sheet.bad { background: var(--verdict-full-bg); } .sheet.warn { background: var(--verdict-unknown-bg); }
 .verdict { display: flex; align-items: center; gap: 16px; }
 .verdict .badge-big { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
@@ -24,13 +35,25 @@
 .verdict .guest { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-primary); margin-top: 4px; line-height: 1.2; }
 .verdict .who { margin-top: 4px; font-size: 15px; } .verdict .who { color: var(--text-secondary); font-size: 16px; }
 .dots { display: flex; align-items: center; gap: 6px; margin: 14px 0; font-size: 14px; }
-.dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--border-strong); } .dots i.on { background: var(--verdict-admitted); } .dots.bad i.on { background: var(--verdict-full); }
+.dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--border-strong); } .dots i.on { background: var(--verdict-admitted); animation: dot-on .2s ease-out both; } .dots.bad i.on { background: var(--verdict-full); }
+@keyframes dot-on { from { opacity: .3; } to { opacity: 1; } }
 .history { background: var(--bg-surface); border-radius: 12px; padding: 12px 16px; margin: 8px 0 16px; }
 .history .h { display: flex; gap: 10px; padding: 6px 0; font-size: 14px; }
 .sheet-actions { display: flex; gap: 10px; margin-top: 8px; }
 .sheet-actions .btn { flex: 1; }
-.auto-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--verdict-admitted); transform-origin: left; opacity: .6; }
+.auto-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--verdict-admitted); transform-origin: left; opacity: .6; animation: drain 2.1s linear .5s both; }
+@keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+/* Verdict mark: the disc settles in as the sheet lands, then the glyph draws. */
+.vm { transform-origin: center; animation: vm-in .22s cubic-bezier(.22, 1, .36, 1) .32s both; }
+@keyframes vm-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+.vm .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: vm-draw .2s cubic-bezier(.22, 1, .36, 1) .54s both; }
+@keyframes vm-draw { 0% { stroke-dashoffset: 1; opacity: 0; } 1% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
+.vm .dot { transform-box: fill-box; transform-origin: center; animation: vm-dot .18s cubic-bezier(.22, 1, .36, 1) .72s both; }
+@keyframes vm-dot { from { transform: scale(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .flash, .cam .checking, .sheet, .sheet.open { transition-duration: 0s; transition-delay: 0s; }
+  .vm, .vm .draw, .vm .dot, .dots i.on { animation: none; }
+  .vm .draw { stroke-dashoffset: 0; }
+}
 .events-list { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px; }
 .events-list .choice { padding: 16px; }
-.pop { animation: pop .5s var(--ease); } @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
-.shake { animation: shake .5s; } @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }

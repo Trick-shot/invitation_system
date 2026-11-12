@@ -6,7 +6,7 @@ git config --system --get-all safe.directory 2>/dev/null | grep -qx "$APP_DIR" |
 git -C "$APP_DIR" fetch -q origin "$BRANCH"
 git -C "$APP_DIR" reset -q --hard "origin/$BRANCH"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
-sudo -u "$APP_USER" -H bash -c "export PIP_CACHE_DIR=$APP_DIR/.cache/pip; cd $APP_DIR && .venv/bin/pip install -q -r requirements.txt && .venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput"
+sudo -u "$APP_USER" -H bash -c "export PIP_CACHE_DIR=$APP_DIR/.cache/pip; cd $APP_DIR && .venv/bin/pip install -q -r requirements.txt && .venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput && .venv/bin/python manage.py purge_deleted_workspaces --schedule"
 [ -f /etc/invitations-build.env ] && . /etc/invitations-build.env
 # Release tag shared by backend and frontend, so a Sentry issue points at the deploy that caused it.
 RELEASE="invitations@$(git -C "$APP_DIR" rev-parse --short HEAD)"

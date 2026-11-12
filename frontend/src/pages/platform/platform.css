@@ -41,3 +41,34 @@
 .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 10px; }
 .panel-head h3 { font-size: 16px; }
 .activity .empty-line { display: block; padding: 4px 0 8px; color: var(--text-tertiary); }
+
+/* Workspace being deleted: one calm banner with the date and the way back. */
+.closing-banner { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 20px; border-radius: var(--r-xl); background: var(--danger-subtle); border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent); }
+.closing-banner b { color: var(--danger-text); }
+.closing-banner p { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; }
+.closing-banner .grow, .danger-zone .grow { flex: 1; min-width: 240px; }
+.danger-zone { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 20px; border-radius: var(--r-xl); border: 1px solid var(--border-default); }
+.danger-zone p { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; }
+.removes { display: grid; border: 1px solid var(--border-subtle); border-radius: var(--r-lg); }
+.removes > div { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--border-subtle); font-size: 14px; }
+.removes > div:first-child { border-top: 0; }
+.removes b { font-variant-numeric: tabular-nums; min-width: 110px; }
+.removes span { color: var(--text-secondary); }
+.warn-line { margin: 0; padding: 10px 14px; border-radius: var(--r-lg); background: var(--warning-subtle); color: var(--warning-text); font-size: 14px; }
+/* Platform settings */
+.settings-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.mini-facts { display: grid; margin: 0; }
+.mini-facts > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border-subtle); font-size: 14px; }
+.mini-facts > div:first-child { border-top: 0; padding-top: 0; }
+.mini-facts dt { color: var(--text-secondary); }
+.mini-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mini-facts dd.accent { color: var(--text-accent); }
+.deleting-list { display: grid; }
+.deleting-list a { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-subtle); color: var(--text-primary); text-decoration: none; font-size: 14px; }
+.deleting-list a:first-child { border-top: 0; }
+.deleting-list a span { color: var(--danger-text); }
+@media (max-width: 1100px) { .settings-grid { grid-template-columns: 1fr; } }
+/* Client bill: how to pay */
+.pay-panel { display: grid; gap: 12px; }
+.pay-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.pay-lines li { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; padding: 10px 14px; background: var(--bg-inset); border-radius: var(--r-lg); }

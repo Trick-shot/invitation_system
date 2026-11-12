@@ -64,6 +64,23 @@ class MeSerializer(serializers.ModelSerializer):
         fields = ("id", "email", "full_name", "phone", "initials", "is_platform_owner", "memberships", "support")
         read_only_fields = ("email", "is_platform_owner")
 
+    def validate_full_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Your name shows on emails and in the activity log.")
+        return value
+
+    def validate_phone(self, value):
+        value = (value or "").strip()
+        if not value:
+            return ""
+        from apps.invitations.phones import PhoneError, normalise
+
+        try:
+            return normalise(value, "TZ")
+        except PhoneError as exc:
+            raise serializers.ValidationError(str(exc))
+
     def get_support(self, user):
         """The owner's open support sessions: the app treats each as admin access to that workspace."""
         if not getattr(user, "is_platform_owner", False):

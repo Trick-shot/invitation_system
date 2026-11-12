@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
 import type { EarningsData, Paginated, PlatformWorkspace } from "../../api/types";
-import { Badge, Button, ErrorState, Field, Input, Modal, SkelStats, Stat, Stagger, relTime, useToast } from "../../components/ui";
+import { Badge, Button, ErrorState, Field, Input, Modal, SkelStats, Stat, Stagger, fmtDate, relTime, useToast } from "../../components/ui";
 import { tzs } from "./money";
 
-const setupBadge = (s: PlatformWorkspace["setup"]) =>
-  s === "complete" ? <Badge tone="success" dot>Complete</Badge> : s === "no_events" ? <Badge tone="warning" dot>No events yet</Badge> : <Badge tone="danger" dot>Invite not accepted</Badge>;
+const setupBadge = (s: PlatformWorkspace["setup"], w?: PlatformWorkspace) =>
+  w?.status === "deleting" ? <Badge tone="danger" dot>Removed {w.delete_after ? fmtDate(w.delete_after, true) : "soon"}</Badge>
+  : s === "complete" ? <Badge tone="success" dot>Complete</Badge> : s === "no_events" ? <Badge tone="warning" dot>No events yet</Badge> : <Badge tone="danger" dot>Invite not accepted</Badge>;
 
 export default function Workspaces() {
   const qc = useQueryClient();
@@ -31,7 +32,7 @@ export default function Workspaces() {
     active: rows.filter((r) => r.last_active && new Date(r.last_active).getTime() > month).length,
     sms: rows.reduce((a, r) => a + (r.sms_this_month ?? 0), 0),
     open: rows.reduce((a, r) => a + r.events_open, 0),
-    stalled: rows.filter((r) => r.setup !== "complete").length,
+    stalled: rows.filter((r) => r.setup !== "complete" && r.status !== "deleting").length,
   };
   return (
     <>
@@ -56,7 +57,7 @@ export default function Workspaces() {
                 <td>{w.contact ? (w.contact.name || w.contact.email) : <span className="quiet">None yet</span>}</td>
                 <td>{w.sends_on === "own_keys" ? "Their Beem keys" : "Your Beem, billed"}</td>
                 <td className="money">{(w.sms_this_month ?? 0).toLocaleString("en-US")}</td>
-                <td>{setupBadge(w.setup)}</td>
+                <td>{setupBadge(w.setup, w)}</td>
                 <td className="quiet">{w.last_active ? relTime(w.last_active) : "Never"}</td>
               </tr>
             ))}

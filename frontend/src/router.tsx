@@ -47,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "earnings", element: <P.PlatformEarnings /> },
       { path: "earnings/:eventId", element: <P.PlatformEventBill /> },
       { path: "rates", element: <P.PlatformRates /> },
+      { path: "settings", element: <P.PlatformSettings /> },
     ] },
     { path: "/app/:slug/onboarding/:step", element: <Page><P.Onboarding /></Page> },
     { path: "/app/:slug/onboarding/:eventId/:step", element: <Page><P.Onboarding /></Page> },

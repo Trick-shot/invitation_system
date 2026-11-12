@@ -5,7 +5,6 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
 import type { ScanEvent, ScanSearchRow, Verdict } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
-import { AnimatePresence, motion } from "framer-motion";
 import { Button, Illustration, Input, fmtDate, fmtTime } from "../../components/ui";
 import { Loader } from "../../components/ui/Loader";
 import { VerdictMark } from "./VerdictMark";
@@ -41,11 +40,23 @@ export default function Scanner() {
   return <ScanScreen event={event} onChangeEvent={() => { localStorage.removeItem("ti.scan.event"); setEventId(null); }} />;
 }
 
-// "closing": the sheet is sliding away; the tint stays until it has gone, then the camera comes back.
-type State = { kind: "idle" } | { kind: "checking" } | { kind: "verdict"; v: Verdict } | { kind: "closing"; v: Verdict } | { kind: "offline" } | { kind: "search" };
+// One thing at a time: the sheet slides away, then the tint fades, then scanning resumes.
+// "closing" is the sheet on its way out; v is null for the offline sheet.
+type State = { kind: "idle" } | { kind: "checking" } | { kind: "verdict"; v: Verdict; n: number } | { kind: "closing"; v: Verdict | null; n: number } | { kind: "offline"; n: number } | { kind: "search" };
+type Tone = "ok" | "bad" | "warn";
 
-const toneOf = (r: Verdict["result"]) => (r === "accepted" ? "ok" : r === "exhausted" || r === "unknown" ? "bad" : "warn");
+const toneOf = (r: Verdict["result"]): Tone => (r === "accepted" ? "ok" : r === "exhausted" || r === "unknown" ? "bad" : "warn");
+// Kept in step with scanner.css: the sheet leaves in .24s, the tint fades in .2s.
+const SHEET_OUT_MS = 260;
+const TINT_OUT_MS = 220;
 
+/**
+ * Everything over the camera (tint, "Checking", the sheet) is always on the page
+ * and moves with CSS transitions. Mounting and unmounting layers on top of a live
+ * video is what made the iPhone camera blink black for a frame, and framer's hand
+ * back from the browser's animation to an inline style showed as the tint coming
+ * back for one frame after it had faded.
+ */
 function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent: () => void }) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [arrived, setArrived] = useState<number | null>(null);
@@ -54,8 +65,14 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
   const scanner = useRef<Html5Qrcode | null>(null);
   const busy = useRef(false);
   const paused = useRef(false);           // decoding paused while a verdict is on screen
+  const seq = useRef(0);                  // restarts the sheet's own animations for each guest
+  const timers = useRef<number[]>([]);
   const lastToken = useRef<{ t: string; at: number } | null>(null);
   const arrivedRef = useRef(arrived); arrivedRef.current = arrived;
+  const lastTone = useRef<Tone>("ok");
+
+  const later = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)); };
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const submit = useCallback(async (body: { token?: string; invitation_id?: number }) => {
     if (busy.current) return;
@@ -65,7 +82,7 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const v = await api<Verdict>("/api/scan/", { method: "POST", body: payload });
-        setArrived(v.event_arrived); setState({ kind: "verdict", v });
+        setArrived(v.event_arrived); setState({ kind: "verdict", v, n: ++seq.current });
         const tone = toneOf(v.result);
         // Three sounds a door team learns in minutes: ding-ding (in), falling dun-dun (already in), buzz (not ours).
         if (v.result === "accepted") sounds.admitted();
@@ -81,8 +98,8 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
       }
     }
     busy.current = false;
-    if (lastErr instanceof ApiError) { sounds.rejected(); setState({ kind: "verdict", v: { result: "unknown", guest_name: "", capacity: 0, admitted_count: 0, previous_scans: [], invitation_id: null, event_arrived: arrivedRef.current ?? 0 } }); }
-    else setState({ kind: "offline" });
+    if (lastErr instanceof ApiError) { sounds.rejected(); setState({ kind: "verdict", n: ++seq.current, v: { result: "unknown", guest_name: "", capacity: 0, admitted_count: 0, previous_scans: [], invitation_id: null, event_arrived: arrivedRef.current ?? 0 } }); }
+    else setState({ kind: "offline", n: ++seq.current });
   }, [event.id]);
 
   // The camera starts once and stays on. Stopping it between scans is what made
@@ -99,7 +116,13 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
       if (lastToken.current && lastToken.current.t === token && now - lastToken.current.at < 4000) return; // same card held in frame
       lastToken.current = { t: token, at: now };
       void submit({ token });
-    }, () => {}).then(() => setCamera("on")).catch(() => setCamera("blocked"));
+    }, () => {}).then(() => {
+      setCamera("on");
+      // iOS pauses the camera preview when something else grabs the media session
+      // (a call, another tab). Pick it straight back up instead of showing a still frame.
+      const video = document.querySelector("#reader video") as HTMLVideoElement | null;
+      video?.addEventListener("pause", () => { if (scanner.current) void video.play().catch(() => {}); });
+    }).catch(() => setCamera("blocked"));
     return () => { try { if (h.isScanning) h.stop().catch(() => {}); } catch { /* not running */ } scanner.current = null; };
   }, [submit]);
 
@@ -113,14 +136,31 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
   }, [state]);
   useEffect(() => { const on = () => state.kind === "offline" && dismiss(); window.addEventListener("online", on); return () => window.removeEventListener("online", on); }, [state.kind]);
 
-  // One thing at a time: the sheet leaves first, then the tint fades, then scanning resumes.
-  // Resuming earlier would let a new verdict start on top of the one still leaving.
   function dismiss() {
-    setState((s) => (s.kind === "verdict" ? { kind: "closing", v: s.v } : s.kind === "closing" ? s : { kind: "idle" }));
-    if (state.kind !== "verdict" && state.kind !== "closing") paused.current = false;
+    if (state.kind === "verdict" || state.kind === "offline") {
+      const n = state.n;
+      setState({ kind: "closing", v: state.kind === "verdict" ? state.v : null, n });
+      // Only move on if nothing newer has started in the meantime.
+      later(SHEET_OUT_MS, () => setState((s) => (s.kind === "closing" && s.n === n ? { kind: "idle" } : s)));
+      later(SHEET_OUT_MS + TINT_OUT_MS, () => { if (seq.current === n) paused.current = false; });
+      return;
+    }
+    if (state.kind === "closing") return;
+    setState({ kind: "idle" }); paused.current = false;
   }
   const resumeVideo = () => { const el = document.querySelector("#reader video") as HTMLVideoElement | null; if (el && el.paused) void el.play(); };
-  const tone = state.kind === "verdict" || state.kind === "closing" ? toneOf(state.v.result) : null;
+
+  const verdict = state.kind === "verdict" ? state.v : state.kind === "closing" ? state.v : null;
+  if (verdict) lastTone.current = toneOf(verdict.result);
+  const tintOn = verdict !== null;                       // stays through "closing", fades once the sheet is gone
+  const sheetOpen = state.kind === "verdict" || state.kind === "offline";
+  // The sheet keeps its last content while parked, so its size never changes on the way out.
+  const lastBody = useRef<Extract<State, { kind: "verdict" | "offline" | "closing" }> | null>(null);
+  if (state.kind === "verdict" || state.kind === "offline" || state.kind === "closing") lastBody.current = state;
+  const sheetBody = lastBody.current;
+  const offline = state.kind === "offline" || (state.kind === "closing" && state.v === null);
+  const bodyOffline = sheetBody ? sheetBody.kind === "offline" || (sheetBody.kind === "closing" && sheetBody.v === null) : false;
+  const bodyVerdict = sheetBody && sheetBody.kind !== "offline" ? sheetBody.v : null;
 
   return (
     <div className="sc">
@@ -131,43 +171,31 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
           <div className="count"><b>{arrived ?? "–"}</b><span>arrived</span></div>
         </div>
       </div>
-      <div className={`cam theme-dark ${state.kind}`} onClick={resumeVideo} style={{ display: state.kind === "search" ? "none" : undefined }}>
+      <div className="cam theme-dark" onClick={resumeVideo} style={{ display: state.kind === "search" ? "none" : undefined }}>
         <div id="reader" />
         <div className="reticle"><i /><i /><i /><i /></div>
         <div className="hint">Hold the code inside the frame.<br />It scans automatically.</div>
-        <AnimatePresence onExitComplete={() => { paused.current = false; }}>
-          {tone && <motion.div key="tint" className={`flash ${tone}`} initial={{ opacity: 0 }} animate={{ opacity: 0.88 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} />}
-        </AnimatePresence>
-        {camera === "blocked" && state.kind !== "offline" && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", color: "rgba(255,255,255,.85)", padding: 24 }}><div><b>Camera not available</b><div style={{ fontSize: 13, marginTop: 6 }}>Allow camera access for this site, or find guests by name below.</div></div></div>}
-        <AnimatePresence>
-          {state.kind === "checking" && <motion.div key="chk" className="checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}><Loader size={16} /> Checking</motion.div>}
-        </AnimatePresence>
-        {state.kind === "offline" && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><Illustration name="no-signal" size={120} /></div>}
+        <div className={`flash ${lastTone.current}${tintOn ? " on" : ""}`} aria-hidden />
+        {camera === "blocked" && !offline && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", color: "rgba(255,255,255,.85)", padding: 24 }}><div><b>Camera not available</b><div style={{ fontSize: 13, marginTop: 6 }}>Allow camera access for this site, or find guests by name below.</div></div></div>}
+        <div className={`checking${state.kind === "checking" ? " on" : ""}`} aria-hidden={state.kind !== "checking"}><Loader size={16} /> Checking</div>
+        {offline && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><Illustration name="no-signal" size={120} /></div>}
       </div>
       {state.kind === "search"
         ? <SearchByName event={event} onPick={(id) => submit({ invitation_id: id })} onCancel={dismiss} />
         : <div className="sc-foot"><Button size="lg" block onClick={() => { paused.current = true; setState({ kind: "search" }); }}>Find a guest by name</Button></div>}
-      <AnimatePresence onExitComplete={() => setState((s) => (s.kind === "closing" ? { kind: "idle" } : s))}>
-        {state.kind === "verdict" && <VerdictSheet key="v" v={state.v} onDismiss={dismiss} onFind={() => { paused.current = true; setState({ kind: "search" }); }} />}
-        {state.kind === "offline" && (
-          <motion.div key="off" className="sheet theme-dark" style={{ background: "#262220" }} {...sheetMotion}>
-            <div className="verdict"><span className="badge-big" style={{ background: "#44403c" }}>{Icon.x}</span><div><h2>No connection</h2><div className="who">Scanning is paused. Hold the queue until this clears.</div></div></div>
-            <div className="sheet-actions"><Button size="lg" onClick={dismiss}>Try again</Button></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className={`sheet ${bodyOffline ? "theme-dark offline" : bodyVerdict ? toneOf(bodyVerdict.result) : ""}${sheetOpen ? " open" : ""}`} role="status" aria-hidden={!sheetOpen}>
+        {sheetBody && (bodyOffline
+          ? <div key={sheetBody.n}>
+              <div className="verdict"><span className="badge-big" style={{ background: "#44403c" }}>{Icon.x}</span><div><h2>No connection</h2><div className="who">Scanning is paused. Hold the queue until this clears.</div></div></div>
+              <div className="sheet-actions"><Button size="lg" onClick={dismiss}>Try again</Button></div>
+            </div>
+          : bodyVerdict && <VerdictBody key={sheetBody.n} v={bodyVerdict} onDismiss={dismiss} onFind={() => { paused.current = true; setState({ kind: "search" }); }} />)}
+      </div>
     </div>
   );
 }
 
-const SHEET_IN = [0.32, 0.72, 0, 1] as const;
-const sheetMotion = {
-  initial: { y: "100%" },
-  animate: { y: 0, transition: { duration: 0.32, ease: SHEET_IN, delay: 0.16 } },
-  exit: { y: "100%", transition: { duration: 0.24, ease: [0.4, 0, 1, 1] as const } },
-};
-
-function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => void; onFind: () => void }) {
+function VerdictBody({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => void; onFind: () => void }) {
   const ok = v.result === "accepted";
   const tone = toneOf(v.result);
   const title = { accepted: "Admitted", exhausted: "Already in", unknown: "Not recognised", wrong_event: "Wrong event", closed: "Doors not open" }[v.result];
@@ -175,17 +203,14 @@ function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => v
   const name = v.result === "accepted" || v.result === "exhausted" || v.result === "wrong_event" ? v.guest_name : "";
   const sub = { accepted: "", exhausted: v.capacity === 1 ? "This card admits one person and they are already in." : `All ${v.capacity} people on this card are already in.`, unknown: "This code is not an invitation for this event. Check the guest list by name.", wrong_event: "Invited to a different event.", closed: "Ask the coordinator to open the doors before scanning." }[v.result];
   return (
-    <motion.div className={`sheet ${tone}`} {...sheetMotion}>
+    <div>
       <div className="verdict">
         <VerdictMark kind={tone} />
         <div><h2>{title}</h2>{name && <div className="guest">{name}</div>}{sub && <div className="who">{sub}</div>}</div>
       </div>
       {(ok || v.result === "exhausted") && v.capacity > 0 && (
         <div className={`dots ${ok ? "" : "bad"}`}>
-          {Array.from({ length: v.capacity }).map((_, i) => (
-            <motion.i key={i} className={i < v.admitted_count ? "on" : ""}
-              initial={i < v.admitted_count ? { opacity: 0.3 } : false} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.55 + i * 0.06 }} />
-          ))}
+          {Array.from({ length: v.capacity }).map((_, i) => <i key={i} className={i < v.admitted_count ? "on" : ""} style={{ animationDelay: `${0.55 + i * 0.06}s` }} />)}
           <span style={{ marginLeft: 6 }}>{v.capacity === 1 ? (ok ? "Admits 1 person" : "1 of 1 in") : ok ? `${v.admitted_count} of ${v.capacity} in` : `${v.capacity} of ${v.capacity} in`}</span>
         </div>
       )}
@@ -196,8 +221,8 @@ function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => v
         {ok ? <Button size="lg" onClick={onDismiss}>Next guest</Button> : <Button variant="ink" size="lg" onClick={onDismiss}>Next guest</Button>}
         {v.result === "unknown" && <Button size="lg" onClick={onFind}>Find by name</Button>}
       </div>
-      {ok && <motion.div className="auto-bar" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 2.1, ease: "linear", delay: 0.5 }} />}
-    </motion.div>
+      {ok && <div className="auto-bar" />}
+    </div>
   );
 }
 

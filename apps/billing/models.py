@@ -77,3 +77,22 @@ class EventBill(WorkspaceOwnedModel):
     due_at = models.DateField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class RetiredTotal(models.Model):
+    """
+    SMS money from workspaces that have been deleted, one row per month, with no
+    client attached. The client's data goes; the owner's own earnings history stays true.
+    """
+
+    year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField()
+    sms = models.PositiveIntegerField(default=0)
+    cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    billed = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+
+    class Meta:
+        unique_together = [("year", "month")]
+
+    def __str__(self):
+        return f"Retired {self.year}-{self.month:02d}: {self.sms} SMS"

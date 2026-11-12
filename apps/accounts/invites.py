@@ -9,7 +9,6 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from apps.messaging.service import send_transactional_sms
 from apps.tenancy.models import MemberInvite, Membership
 
 from .models import User
@@ -65,7 +64,7 @@ def deliver_invite(invite: MemberInvite, *, kind: str = "invite") -> dict:
     import logging
 
     from apps.invitations.phones import PhoneError, normalise
-    from apps.messaging.service import send_transactional_sms
+    from apps.messaging.service import send_transactional_sms  # imported here so tests can swap it
 
     from .emails import report, send_invite_email, send_reset_email
 

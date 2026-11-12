@@ -198,8 +198,9 @@ export const fmtDate = (iso: string, short = false) => new Date(iso + (iso.lengt
 export const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 export const relTime = (iso: string) => {
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (d < 60) return "just now"; if (d < 3600) return `${Math.floor(d / 60)} minutes ago`; if (d < 86400) return `${Math.floor(d / 3600)} hours ago`;
-  return `${Math.floor(d / 86400)} days ago`;
+  const ago = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"} ago`;
+  if (d < 60) return "just now"; if (d < 3600) return ago(Math.floor(d / 60), "minute"); if (d < 86400) return ago(Math.floor(d / 3600), "hour");
+  return ago(Math.floor(d / 86400), "day");
 };
 
 

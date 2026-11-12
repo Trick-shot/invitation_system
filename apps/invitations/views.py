@@ -224,8 +224,8 @@ class PublicInvitationView(APIView):
 
         from apps.scanning.models import ScanLog
 
-        inv = Invitation.objects.all_workspaces().select_related("event").filter(token=token).first()
-        if inv is None:
+        inv = Invitation.objects.all_workspaces().select_related("event", "workspace").filter(token=token).first()
+        if inv is None or inv.workspace.status != "active":
             return Response({"state": "invalid"}, status=404)
         if not request.query_params.get("poll"):
             Invitation.objects.all_workspaces().filter(pk=inv.pk).update(view_count=F("view_count") + 1)

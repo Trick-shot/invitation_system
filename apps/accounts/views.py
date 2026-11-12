@@ -115,6 +115,30 @@ class MeView(APIView):
         return Response(ser.data)
 
 
+class PasswordChangeView(APIView):
+    """Change your own password while signed in: the current one, then the new one."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        current = request.data.get("current_password") or ""
+        new = request.data.get("new_password") or ""
+        if not request.user.check_password(current):
+            return Response({"current_password": ["That is not your current password."]}, status=400)
+        try:
+            validate_password(new, request.user)
+        except DjangoValidationError as exc:
+            return Response({"new_password": list(exc.messages)}, status=400)
+        request.user.set_password(new)
+        request.user.save(update_fields=["password"])
+        return Response(status=204)
+
+
 class InviteView(APIView):
     """GET shows who the invite is for; POST sets the password and activates."""
 

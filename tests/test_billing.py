@@ -2,10 +2,7 @@
 
 from decimal import Decimal
 
-from django.core import mail
-
 from apps.billing.models import SmsCharge, SmsRates
-from apps.tenancy.context import workspace_context
 
 from .conftest import client_for
 

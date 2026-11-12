@@ -13,6 +13,7 @@ class Workspace(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"
         SUSPENDED = "suspended", "Suspended"
+        DELETING = "deleting", "Being deleted"
 
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=60, unique=True)
@@ -22,6 +23,11 @@ class Workspace(models.Model):
     default_language = models.CharField(max_length=8, default="en")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Deleting is two steps: closed at once, removed for good after a hold (apps/tenancy/deletion.py).
+    delete_after = models.DateTimeField(null=True, blank=True)
+    deletion_reason = models.CharField(max_length=300, blank=True)
+    deletion_requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    status_before_deletion = models.CharField(max_length=12, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -190,6 +196,8 @@ class AuditEvent(models.Model):
         SUPPORT_CHANGE = "support_change", "Support changed something"
         SUPPORT_END = "support_end", "Support left"
         DETAILS_CHANGED = "details_changed", "Workspace details changed"
+        DELETION_SCHEDULED = "deletion_scheduled", "Deletion scheduled"
+        RESTORED = "restored", "Restored"
 
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="audit_events")
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
@@ -201,3 +209,29 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class PlatformSettings(models.Model):
+    """
+    One row (pk=1): how Trickshot presents itself to clients. The support address
+    goes on every email, the payment details and terms on every bill.
+    """
+
+    business_name = models.CharField(max_length=120, default="Trickshot")
+    support_email = models.EmailField(default="hello@trickshot.tech")
+    support_phone = models.CharField(max_length=20, blank=True)
+    payment_instructions = models.TextField(blank=True, help_text="How clients pay a bill: M-Pesa till, bank account, and so on")
+    invoice_due_days = models.PositiveSmallIntegerField(default=14)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        verbose_name_plural = "platform settings"
+
+    def __str__(self):
+        return f"{self.business_name} settings"
+
+    @classmethod
+    def current(cls) -> "PlatformSettings":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj

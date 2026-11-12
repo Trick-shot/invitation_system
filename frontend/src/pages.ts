@@ -17,6 +17,7 @@ export const PlatformWorkspaceDetail = lazyPage(() => import("./pages/platform/W
 export const PlatformEarnings = lazyPage(() => import("./pages/platform/Earnings"));
 export const PlatformEventBill = lazyPage(() => import("./pages/platform/Earnings").then((m) => ({ default: m.PlatformEventBill })));
 export const PlatformRates = lazyPage(() => import("./pages/platform/Rates"));
+export const PlatformSettings = lazyPage(() => import("./pages/platform/Settings"));
 export const Onboarding = lazyPage(() => import("./pages/onboarding/Onboarding"));
 
 export const Shell = lazyPage(() => import("./pages/admin/Shell"));

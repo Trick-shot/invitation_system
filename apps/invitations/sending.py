@@ -64,6 +64,9 @@ def send_delivery(delivery_id: int, workspace_id: int):
         delivery = Delivery.objects.select_related("invitation").filter(pk=delivery_id, status=Delivery.Status.QUEUED).first()
         if delivery is None:
             return "skipped"
+        if workspace.status != Workspace.Status.ACTIVE:
+            Delivery.objects.filter(pk=delivery.pk).update(status=Delivery.Status.FAILED, error="Workspace closed", updated_at=timezone.now())
+            return "closed"
         provider = get_provider_for(workspace)
         try:
             result = provider.send(to=delivery.invitation.phone, body=delivery.body, reference=f"d{delivery.pk}")

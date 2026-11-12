@@ -11,7 +11,6 @@ from django.template.loader import render_to_string
 
 from .models import User
 
-
 log = logging.getLogger(__name__)
 
 
@@ -28,10 +27,12 @@ def report(exc: Exception) -> None:
 def _send(to: str, subject: str, template: str, ctx: dict, text: str) -> bool:
     """True if the mail server accepted it. Failures are logged and reported, not raised and not
     hidden: the caller decides what to tell the person (fail_silently used to swallow them)."""
-    ctx = {"subject": subject, "site_url": settings.SITE_URL.rstrip("/"), **ctx}
+    support_email = _support_email()
+    ctx = {"subject": subject, "site_url": settings.SITE_URL.rstrip("/"), "support_email": support_email, **ctx}
     try:
         html = render_to_string(template, ctx)
-        msg = EmailMultiAlternatives(subject=subject, body=text, from_email=settings.DEFAULT_FROM_EMAIL, to=[to])
+        # Replies go to the support address set in the platform settings, not to a no-reply box.
+        msg = EmailMultiAlternatives(subject=subject, body=text, from_email=settings.DEFAULT_FROM_EMAIL, to=[to], reply_to=[support_email])
         msg.attach_alternative(html, "text/html")
         msg.send()
         return True
@@ -39,6 +40,15 @@ def _send(to: str, subject: str, template: str, ctx: dict, text: str) -> bool:
         log.warning("Email to %s failed: %s", to, exc)
         report(exc)
         return False
+
+
+def _support_email() -> str:
+    try:
+        from apps.tenancy.models import PlatformSettings
+
+        return PlatformSettings.current().support_email
+    except Exception:  # noqa: BLE001  (before migrations, or the table is unreachable)
+        return "hello@trickshot.tech"
 
 
 def role_label(role: str) -> str:

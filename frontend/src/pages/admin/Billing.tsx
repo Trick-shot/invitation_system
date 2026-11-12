@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, tokens, ws } from "../../api/client";
-import type { BillingData, EventBillData } from "../../api/types";
+import type { BillingData, EventBillData, HowToPay as HowToPayData } from "../../api/types";
 import { Button, ErrorState, SkelPanel, SkelStats, Stat, Stagger, fmtDate } from "../../components/ui";
 import { BillBadge, tzs } from "../platform/money";
 import "../platform/platform.css";
@@ -65,6 +65,7 @@ export default function Billing() {
                   </tbody>
                 </table>
               </div>
+              {b.to_pay_now > 0 && <HowToPay pay={b.how_to_pay} amount={b.to_pay_now} due={invoiced?.bill.due_at ?? null} />}
               <div className="note"><b>How the amount is worked out</b><p>Every SMS costs TZS {tzs(b.price_per_sms)}. A message up to 160 characters is 1 SMS, longer ones are 2 or more, and an emoji or curly quote lowers the limit to 70. Open a bill to see every message it charges for, or download it as a spreadsheet.</p></div>
             </>
           )}
@@ -120,11 +121,27 @@ export function EventBillPage() {
                   </div>
                 </div>
               )}
+              {b.bill.status === "invoiced" && b.how_to_pay && <HowToPay pay={b.how_to_pay} amount={b.amount} due={b.bill.due_at} />}
               <div className="note"><b>This bill only grows while the event runs</b><p>Each line is an SMS that Beem accepted. Messages that failed to send are not charged. When the event closes we send the invoice; until then the amount here is the live total.</p></div>
               <Link to={`/app/${slug}/billing`} className="quiet">Back to billing</Link>
             </>
           )}
       </div>
     </>
+  );
+}
+
+/** Shown once a bill is invoiced: the amount, the due date, and how to pay, from the owner's platform settings. */
+function HowToPay({ pay, amount, due }: { pay: HowToPayData; amount: number; due: string | null }) {
+  const lines = pay.instructions.split("\n").map((l) => l.trim()).filter(Boolean);
+  return (
+    <div className="panel panel-pad pay-panel">
+      <div>
+        <h3>How to pay</h3>
+        <p className="muted" style={{ margin: "4px 0 0" }}>TZS {tzs(amount)} to {pay.business_name}{due ? `, by ${fmtDate(due)}` : ""}.</p>
+      </div>
+      {lines.length > 0 ? <ul className="pay-lines">{lines.map((l, i) => <li key={i}>{l}</li>)}</ul> : <p className="muted" style={{ margin: 0 }}>Ask {pay.business_name} for the payment details.</p>}
+      <p className="quiet" style={{ margin: 0, fontSize: 14 }}>Questions about this bill: <a href={`mailto:${pay.support_email}`}>{pay.support_email}</a>{pay.support_phone && <>, or call <a href={`tel:${pay.support_phone}`}>{pay.support_phone}</a></>}.</p>
+    </div>
   );
 }

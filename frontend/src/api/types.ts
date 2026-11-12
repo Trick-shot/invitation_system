@@ -57,13 +57,16 @@ export interface ScanSearchRow { id: number; name: string; phone: string; capaci
 
 export interface PublicInvitation { state: "ready" | "preparing" | "finished" | "invalid"; guest_name?: string; capacity?: number; admitted_count?: number; entries?: string[]; event?: { name: string; date: string; start_time: string | null; venue: string; status?: string }; card_url?: string | null }
 
-export interface PlatformWorkspace { id: number; name: string; slug: string; status: string; default_country: string; default_language: string; created_at: string; members: number; events: number; events_open: number; messages_this_month: number; sms_this_month: number; contact: { name: string; email: string; phone: string; user_id: number } | null; sends_on: "platform" | "own_keys"; last_active: string | null; setup: "invite_not_accepted" | "no_events" | "complete" }
+export interface PlatformWorkspace { id: number; name: string; slug: string; status: string; default_country: string; default_language: string; created_at: string; members: number; events: number; events_open: number; messages_this_month: number; sms_this_month: number; contact: { name: string; email: string; phone: string; user_id: number } | null; sends_on: "platform" | "own_keys"; last_active: string | null; setup: "invite_not_accepted" | "no_events" | "complete"; delete_after: string | null }
 export interface ActivityRow { kind: string; summary: string; reason: string; at: string }
 export interface PlatformWorkspaceDetail extends PlatformWorkspace {
   money: { sms_this_month: number; sms_running_event: number; billed_year: number; profit_year: number; bills_year: number; unpaid: number; unpaid_open: number; unpaid_invoiced: number };
   events_total: number; events_running: number; team: { admin: number; coordinator: number; door_staff: number }; country_name: string;
   activity: ActivityRow[]; support: { id: number; mode: "view" | "edit"; expires_at: string; reason: string } | null;
+  deletion: { scheduled: boolean; delete_after?: string; reason?: string; by?: string; grace_days: number; removes: { events: number; guests: number; team: number; accounts: number } };
 }
+export interface HowToPay { business_name: string; instructions: string; support_email: string; support_phone: string; due_days: number }
+export interface PlatformSettingsData { business_name: string; support_email: string; support_phone: string; payment_instructions: string; invoice_due_days: number; updated_at: string }
 export type BillStatus = "open" | "invoiced" | "paid";
 export interface BillState { status: BillStatus; invoiced_at: string | null; due_at: string | null; paid_at: string | null }
 export interface KindRow { kind: string; label: string; messages: number; sms: number; amount: number; cost?: number; profit?: number }
@@ -72,9 +75,9 @@ export interface EventBillData {
   bill: BillState; currency: string; price_per_sms: number; messages: number; sms: number; amount: number;
   still_to_come: { welcome_texts: number; amount: number }; by_kind: KindRow[];
   charges: { recipient: string; kind: string; label: string; sms: number; price_per_sms: number; amount: number; at: string }[];
-  cost?: number; profit?: number; cost_per_sms?: number;
+  cost?: number; profit?: number; cost_per_sms?: number; how_to_pay?: HowToPay;
 }
-export interface BillingData { currency: string; price_per_sms: number; to_pay_now: number; running: number; paid_this_year: number; sms_this_year: number; events: { id: number; name: string; date: string; sms: number; amount: number; price_per_sms: number; bill: BillState }[] }
+export interface BillingData { currency: string; price_per_sms: number; to_pay_now: number; running: number; paid_this_year: number; sms_this_year: number; events: { id: number; name: string; date: string; sms: number; amount: number; price_per_sms: number; bill: BillState }[]; how_to_pay: HowToPay }
 export interface EarningsData {
   year: number; month: number; currency: string; cost_per_sms: number; price_per_sms: number; sms: number; cost: number; billed: number; profit: number;
   unpaid: number; unpaid_open: number; unpaid_invoiced: number; profit_by_month: { year: number; month: number; profit: number }[];
