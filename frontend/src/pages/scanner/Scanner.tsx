@@ -21,7 +21,7 @@ export default function Scanner() {
   const nav = useNavigate();
   const [eventId, setEventId] = useState<number | null>(() => Number(localStorage.getItem("ti.scan.event")) || null);
   const events = useQuery({ queryKey: ["scan-events"], queryFn: () => api<ScanEvent[]>("/api/scan/events/"), enabled: !!me });
-  if (!me) return <Navigate to="/sign-in" replace />;
+  if (!me) return <Navigate to="/staff" replace />;
   const event = events.data?.find((e) => e.id === eventId) ?? null;
 
   if (!event) {
@@ -64,8 +64,12 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
         const v = await api<Verdict>("/api/scan/", { method: "POST", body: payload });
         setArrived(v.event_arrived); setState({ kind: "verdict", v });
         const tone = toneOf(v.result);
-        if (tone === "ok") sounds.admitted(); else if (tone === "bad") sounds.rejected(); else sounds.attention();
-        if (navigator.vibrate) navigator.vibrate(tone === "ok" ? 40 : [60, 60, 60]);
+        // Three sounds a door team learns in minutes: ding-ding (in), falling dun-dun (already in), buzz (not ours).
+        if (v.result === "accepted") sounds.admitted();
+        else if (v.result === "exhausted") sounds.alreadyIn();
+        else if (v.result === "unknown") sounds.rejected();
+        else sounds.attention();
+        if (navigator.vibrate) navigator.vibrate(tone === "ok" ? 40 : v.result === "exhausted" ? [120, 80, 120] : [60, 60, 60]);
         busy.current = false; return;
       } catch (e) {
         lastErr = e;

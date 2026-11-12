@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router-dom";
 import { homeFor, useAuth } from "./auth/AuthProvider";
 import SignIn from "./pages/auth/SignIn";
 import SetPassword from "./pages/auth/SetPassword";
@@ -37,14 +37,17 @@ function Home() {
 }
 function RequireAuth() {
   const { me, loading } = useAuth();
+  const { pathname } = useLocation();
   if (loading) return <div style={{ display: "grid", placeItems: "center", height: "100%" }}><div className="spinner" /></div>;
-  return me ? <Outlet /> : <Navigate to="/sign-in" replace />;
+  // The door team arrives at /scan; send them to their own sign-in, not the admin one.
+  return me ? <Outlet /> : <Navigate to={pathname.startsWith("/scan") ? "/staff" : "/sign-in"} replace />;
 }
 const NoWorkspace = () => <div className="auth-canvas"><div className="auth-card"><h1>No workspace yet</h1><p className="muted">Your account is not a member of any workspace. Ask the person who invited you to send a new link.</p></div></div>;
 
 export const router = createBrowserRouter([
   { path: "/", element: <Home />, errorElement: <ErrorPage /> },
   { path: "/sign-in", element: <SignIn /> },
+  { path: "/staff", element: <SignIn staff /> },
   { path: "/forgot", element: <Lazy><Forgot /></Lazy> },
   { path: "/create-account", element: <Lazy><CreateAccount /></Lazy> },
   { path: "/set-password/:token", element: <SetPassword /> },

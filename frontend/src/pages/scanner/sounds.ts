@@ -46,7 +46,9 @@ function play(notes: Note[]) {
 export const tick = () => play([{ f: 1320, at: 0, dur: 0.06, gain: 0.08, type: "triangle" }]);
 /** Admitted: two rising notes, a clean "ding-ding". */
 export const admitted = () => play([{ f: 988, at: 0, dur: 0.16 }, { f: 1319, at: 0.13, dur: 0.32 }]);
-/** Already in or unknown: a low double buzz that is unmistakable in a noisy entrance. */
+/** Card already used: two falling notes, a clear "no" without the harshness of the buzz. */
+export const alreadyIn = () => play([{ f: 659, at: 0, dur: 0.18, type: "triangle", gain: 0.2 }, { f: 392, at: 0.2, dur: 0.34, type: "triangle", gain: 0.2 }]);
+/** Not recognised: a low double buzz that is unmistakable in a noisy entrance. */
 export const rejected = () => play([{ f: 196, at: 0, dur: 0.14, type: "square", gain: 0.12 }, { f: 165, at: 0.2, dur: 0.22, type: "square", gain: 0.12 }]);
 /** Needs attention (wrong event, doors closed): a single mid tone. */
 export const attention = () => play([{ f: 523, at: 0, dur: 0.22, type: "triangle" }, { f: 523, at: 0.28, dur: 0.22, type: "triangle" }]);
