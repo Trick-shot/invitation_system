@@ -44,6 +44,10 @@ class PlatformWorkspaceSerializer(serializers.ModelSerializer):
     events = serializers.IntegerField(read_only=True)
     events_open = serializers.IntegerField(read_only=True)
     messages_this_month = serializers.SerializerMethodField()
+    sms_this_month = serializers.SerializerMethodField()
+    contact = serializers.SerializerMethodField()
+    sends_on = serializers.SerializerMethodField()
+    last_active = serializers.SerializerMethodField()
     setup = serializers.SerializerMethodField()
 
     class Meta:
@@ -60,6 +64,10 @@ class PlatformWorkspaceSerializer(serializers.ModelSerializer):
             "events",
             "events_open",
             "messages_this_month",
+            "sms_this_month",
+            "contact",
+            "sends_on",
+            "last_active",
             "setup",
             "admin_email",
             "admin_name",
@@ -72,6 +80,27 @@ class PlatformWorkspaceSerializer(serializers.ModelSerializer):
 
         now = timezone.now()
         return sum(UsageRecord.objects.filter(workspace=ws, year=now.year, month=now.month).values_list("count", flat=True))
+
+    def get_sms_this_month(self, ws):
+        from apps.billing.service import sms_this_month
+
+        return sms_this_month(ws)
+
+    def get_contact(self, ws):
+        """The first admin: the person to call. Name, email and phone, read-only here."""
+        m = ws.memberships.filter(role="admin").select_related("user").order_by("-is_active", "created_at").first()
+        if m is None:
+            return None
+        u = m.user
+        return {"name": (u.full_name or "").strip(), "email": u.email, "phone": u.phone, "user_id": u.pk}
+
+    def get_sends_on(self, ws):
+        return "own_keys" if getattr(ws, "credential", None) else "platform"
+
+    def get_last_active(self, ws):
+        from django.db.models import Max
+
+        return ws.memberships.aggregate(t=Max("user__last_login"))["t"]
 
     def get_setup(self, ws):
         if not ws.memberships.filter(is_active=True, role="admin").exists():

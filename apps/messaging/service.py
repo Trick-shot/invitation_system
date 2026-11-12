@@ -21,10 +21,15 @@ def record_usage(workspace, channel: str = "sms", n: int = 1):
         UsageRecord.objects.filter(pk=row.pk).update(count=F("count") + n)
 
 
-def send_transactional_sms(*, workspace, to: str, body: str, reference: str | None = None) -> SendResult:
+def send_transactional_sms(*, workspace, to: str, body: str, reference: str | None = None, kind: str | None = None, event=None, invitation=None, recipient: str = "") -> SendResult:
+    """Send one SMS. With `kind`, the accepted SMS is also written to the billing ledger."""
     provider = get_provider_for(workspace)
     result = provider.send(to=to, body=body, reference=reference or uuid.uuid4().hex)
     record_usage(workspace, "sms")
+    if kind:
+        from apps.billing.service import record_charge
+
+        record_charge(workspace=workspace, body=body, kind=kind, event=event, invitation=invitation, recipient=recipient, provider_message_id=result.provider_message_id)
     return result
 
 

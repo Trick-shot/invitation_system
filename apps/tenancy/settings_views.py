@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from .context import workspace_context
 from .models import Workspace, WorkspaceCredential
-from .permissions import ADMIN, active_membership
+from .permissions import ADMIN, active_membership, check_support_write
 from .serializers import CredentialWriteSerializer, WorkspaceSettingsSerializer
 
 
@@ -21,6 +21,7 @@ class _AdminOnly(APIView):
             from rest_framework.exceptions import PermissionDenied
 
             raise PermissionDenied("Only an admin can change workspace settings.")
+        check_support_write(request, m)
         return ws
 
 
@@ -65,3 +66,14 @@ class WorkspaceExportView(_AdminOnly):
             events = list(Event.objects.values("id", "name", "kind", "date", "venue", "status"))
             guests = list(Invitation.objects.values("event_id", "name", "phone", "capacity", "admitted_count", "view_count", "created_at"))
         return Response({"workspace": ws.name, "events": events, "guests": guests})
+
+
+class WorkspaceActivityView(_AdminOnly):
+    """Support visits and changes, as the client sees them."""
+
+    def get(self, request, workspace_slug):
+        from .models import AuditEvent
+
+        ws = self.load(request, workspace_slug)
+        rows = AuditEvent.objects.filter(workspace=ws).select_related("actor")[:50]
+        return Response([{"kind": r.kind, "summary": r.summary, "reason": r.reason, "at": r.created_at} for r in rows])

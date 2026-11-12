@@ -56,12 +56,27 @@ class MembershipBriefSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     memberships = serializers.SerializerMethodField()
+    support = serializers.SerializerMethodField()
     initials = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
-        fields = ("id", "email", "full_name", "phone", "initials", "is_platform_owner", "memberships")
+        fields = ("id", "email", "full_name", "phone", "initials", "is_platform_owner", "memberships", "support")
         read_only_fields = ("email", "is_platform_owner")
+
+    def get_support(self, user):
+        """The owner's open support sessions: the app treats each as admin access to that workspace."""
+        if not getattr(user, "is_platform_owner", False):
+            return []
+        from django.utils import timezone
+
+        from apps.tenancy.models import SupportSession
+
+        qs = SupportSession.objects.filter(user=user, ended_at__isnull=True, expires_at__gt=timezone.now()).select_related("workspace")
+        return [
+            {"id": s.pk, "mode": s.mode, "reason": s.reason, "expires_at": s.expires_at, "workspace": WorkspaceBriefSerializer(s.workspace).data}
+            for s in qs
+        ]
 
     def get_memberships(self, user):
         qs = user.memberships.filter(is_active=True, workspace__status="active").select_related("workspace")

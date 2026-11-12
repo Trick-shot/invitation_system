@@ -9,10 +9,12 @@ from apps.events.views import EventViewSet
 from apps.invitations.views import InvitationViewSet, PublicInvitationView
 from apps.messaging.views import DeliveryReportView
 from apps.scanning.views import ScanEventsView, ScanLogViewSet, ScanSearchView, ScanView
-from apps.tenancy.platform_views import PlatformWorkspaceViewSet
+from apps.billing.views import EventBillView, WorkspaceBillingView
+from apps.tenancy.platform_views import EarningsView, PlatformEventBillView, PlatformWorkspaceViewSet, SmsRatesView
 from apps.tenancy.settings_views import (
     WorkspaceCredentialView,
     WorkspaceExportView,
+    WorkspaceActivityView,
     WorkspaceSettingsView,
 )
 
@@ -30,12 +32,18 @@ event_children.register("scans", ScanLogViewSet, basename="scanlog")
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("apps.accounts.urls")),
+    path("api/platform/earnings/", EarningsView.as_view(), name="platform-earnings"),
+    path("api/platform/rates/", SmsRatesView.as_view(), name="platform-rates"),
+    path("api/platform/events/<int:pk>/bill/", PlatformEventBillView.as_view(), name="platform-event-bill"),
     path("api/platform/", include(platform.urls)),
     path("api/workspaces/<slug:workspace_slug>/", include(ws.urls)),
     path("api/workspaces/<slug:workspace_slug>/events/<int:event_pk>/", include(event_children.urls)),
     path("api/workspaces/<slug:workspace_slug>/settings/", WorkspaceSettingsView.as_view(), name="workspace-settings"),
     path("api/workspaces/<slug:workspace_slug>/settings/credentials/", WorkspaceCredentialView.as_view(), name="workspace-credentials"),
     path("api/workspaces/<slug:workspace_slug>/export/", WorkspaceExportView.as_view(), name="workspace-export"),
+    path("api/workspaces/<slug:workspace_slug>/activity/", WorkspaceActivityView.as_view(), name="workspace-activity"),
+    path("api/workspaces/<slug:workspace_slug>/billing/", WorkspaceBillingView.as_view(), name="workspace-billing"),
+    path("api/workspaces/<slug:workspace_slug>/events/<int:event_pk>/bill/", EventBillView.as_view(), name="event-bill"),
     path("api/i/<str:token>/", PublicInvitationView.as_view(), name="public-invitation"),
     path("api/scan/", ScanView.as_view(), name="scan"),
     path("api/scan/events/", ScanEventsView.as_view(), name="scan-events"),

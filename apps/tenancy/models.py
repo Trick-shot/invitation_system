@@ -149,3 +149,55 @@ class MemberInvite(models.Model):
         from django.utils import timezone
 
         return self.used_at is None and self.expires_at > timezone.now()
+
+
+class SupportSession(models.Model):
+    """
+    The platform owner looking at a client's workspace to help them.
+    View mode is read-only. Edit mode needs a reason and ends on its own after 30 minutes.
+    Decided 12 Nov 2026 (project doc claude/platform-owner.md).
+    """
+
+    class Mode(models.TextChoices):
+        VIEW = "view", "Support view"
+        EDIT = "edit", "Edit mode"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="support_sessions")
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="support_sessions")
+    mode = models.CharField(max_length=4, choices=Mode.choices, default=Mode.VIEW)
+    reason = models.CharField(max_length=300, blank=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
+    summary_sent = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    @property
+    def is_active(self) -> bool:
+        from django.utils import timezone
+
+        return self.ended_at is None and self.expires_at > timezone.now()
+
+
+class AuditEvent(models.Model):
+    """What the client sees in their activity: support visits, edits made in edit mode, details changed."""
+
+    class Kind(models.TextChoices):
+        SUPPORT_VIEW = "support_view", "Support viewed the workspace"
+        SUPPORT_EDIT = "support_edit", "Support entered edit mode"
+        SUPPORT_CHANGE = "support_change", "Support changed something"
+        SUPPORT_END = "support_end", "Support left"
+        DETAILS_CHANGED = "details_changed", "Workspace details changed"
+
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="audit_events")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    summary = models.CharField(max_length=300)
+    reason = models.CharField(max_length=300, blank=True)
+    session = models.ForeignKey(SupportSession, null=True, blank=True, on_delete=models.SET_NULL, related_name="events")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]

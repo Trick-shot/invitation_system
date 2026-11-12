@@ -81,7 +81,12 @@ def deliver_invite(invite: MemberInvite, *, kind: str = "invite") -> dict:
     if user.phone:
         try:
             to = normalise(user.phone, getattr(ws, "default_country", "TZ") or "TZ")
-            send_transactional_sms(workspace=ws, to=to, body=f"{ws.name} added you on Trickshot Invitations. Set your password: {url}")
+            from apps.billing.service import event_for_workspace_message
+
+            send_transactional_sms(
+                workspace=ws, to=to, body=f"{ws.name} added you on Trickshot Invitations. Set your password: {url}",
+                kind="staff_invite", event=event_for_workspace_message(ws), recipient=user.full_name or user.email,
+            )
             result["sms"] = "sent"
         except PhoneError as exc:
             result["sms"] = f"failed: {exc}"

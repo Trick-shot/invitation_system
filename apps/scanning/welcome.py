@@ -26,7 +26,10 @@ def send_welcome(invitation_id: int, workspace_id: int):
         if message is None or not message.welcome_enabled or not message.welcome_body.strip():
             return "off"
         try:
-            send_transactional_sms(workspace=workspace, to=inv.phone, body=message.render_welcome(name=inv.name), reference=f"w{inv.pk}")
+            send_transactional_sms(
+                workspace=workspace, to=inv.phone, body=message.render_welcome(name=inv.name), reference=f"w{inv.pk}",
+                kind="welcome", event=inv.event, invitation=inv, recipient=inv.name,
+            )
         except ProviderTransientError:
             raise  # Django-Q retries
         except ProviderError as exc:

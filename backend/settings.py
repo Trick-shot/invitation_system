@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.invitations",
     "apps.scanning",
+    "apps.billing",
     "apps.messaging",
 ]
 
@@ -137,6 +138,8 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
     "ROTATE_REFRESH_TOKENS": True,
+    # The owner's workspace list shows "Last active"; it comes from last_login.
+    "UPDATE_LAST_LOGIN": True,
 }
 
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:5173", cast=Csv())

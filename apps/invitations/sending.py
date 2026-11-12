@@ -84,4 +84,11 @@ def send_delivery(delivery_id: int, workspace_id: int):
             updated_at=timezone.now(),
         )
         record_usage(workspace, delivery.channel)
+        from apps.billing.service import record_charge
+
+        inv = delivery.invitation
+        record_charge(
+            workspace=workspace, body=delivery.body, kind="resend" if delivery.sequence > 1 else "invitation",
+            event=inv.event, invitation=inv, recipient=inv.name, provider_message_id=result.provider_message_id,
+        )
         return "sent"

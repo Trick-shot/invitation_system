@@ -12,7 +12,7 @@ from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 
 from .context import reset_current_workspace, set_current_workspace
 from .models import Workspace
-from .permissions import EVERYONE, MANAGERS, active_membership
+from .permissions import EVERYONE, MANAGERS, active_membership, check_support_write
 
 
 class WorkspaceScopedMixin:
@@ -38,6 +38,7 @@ class WorkspaceScopedMixin:
         allowed = self.role_map.get(self.action, self.default_roles)
         if membership.role not in allowed:
             raise PermissionDenied("Your role cannot do this.")
+        check_support_write(request, membership, self)
 
     def finalize_response(self, request, response, *args, **kwargs):
         token = getattr(self, "_ws_token", None)
