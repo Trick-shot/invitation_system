@@ -20,7 +20,8 @@ h1 { font-size: 32px; } h2 { font-size: 24px; letter-spacing: -0.005em; } h3 { f
 p { margin: 0; }
 a { color: var(--text-accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-button { font: inherit; cursor: pointer; }
+/* color: inherit, or iOS paints every button label system blue (seen on the event-kind chips). */
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 input, textarea, select { font: inherit; color: inherit; }
 img { max-width: 100%; display: block; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

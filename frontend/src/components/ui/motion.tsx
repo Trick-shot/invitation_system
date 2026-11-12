@@ -5,8 +5,13 @@ import { useLocation } from "react-router-dom";
 export const EASE = [0.22, 1, 0.36, 1] as const;
 
 /**
- * Wrap an <Outlet/> with this: each route change fades the old page out and
- * rises the new one in. Keyed on the pathname so tab switches animate too.
+ * Wrap an <Outlet/> with this: each route change fades the old page out, then
+ * fades the new one in (mode="wait": never both at once). Keyed on the pathname
+ * so tab switches animate too.
+ *
+ * The wrapper is a real box. It used to be display: contents, which browsers do
+ * not paint, so opacity and movement were silently ignored and every page swap
+ * was instant. gap: inherit keeps the parent's spacing between the page's blocks.
  */
 export function PageTransition({ children, depth }: { children: ReactNode; depth?: number }) {
   const { pathname } = useLocation();
@@ -16,9 +21,10 @@ export function PageTransition({ children, depth }: { children: ReactNode; depth
   const key = depth ? pathname.split("/").slice(0, depth + 1).join("/") : pathname;
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={key} style={{ display: "contents" }}
-        initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -4 }}
-        transition={{ duration: 0.22, ease: EASE }}>
+      <motion.div key={key} className="page-fx"
+        initial={reduce ? false : { opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] } }}
+        exit={reduce ? undefined : { opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } }}>
         {children}
       </motion.div>
     </AnimatePresence>

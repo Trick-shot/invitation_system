@@ -5,7 +5,7 @@ import { NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext, 
 import { api, ws } from "../../api/client";
 import type { Event } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
-import { Avatar, Button, CardStack, CardThumb, Logo, PageTransition, Skel, SkelPanel } from "../../components/ui";
+import { Avatar, Button, CardStack, CardThumb, Logo, PageTransition, Skel, SkelPanel, useScrollLock } from "../../components/ui";
 import { whenIdle } from "../../lazy";
 import { EventLayout, Overview } from "../../pages";
 import "./admin.css";
@@ -46,6 +46,7 @@ export default function Shell() {
   const { pathname } = useLocation();
   const [drawer, setDrawer] = useState(false);
   useEffect(() => { setDrawer(false); }, [pathname]);
+  useScrollLock(drawer);
   // Opening an event is the next likely click; fetch its code while the list is read.
   useEffect(() => { whenIdle(() => { EventLayout.preload(); Overview.preload(); }); }, []);
   if (!me) return <Navigate to="/sign-in" replace />;
@@ -56,7 +57,8 @@ export default function Shell() {
 
   return (
     <div className="shell">
-      <AnimatePresence>{drawer && <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onClick={() => setDrawer(false)} />}</AnimatePresence>
+      {/* Always mounted: it fades with the same duration and curve as the drawer slides, so the two move as one. */}
+      <div className={`drawer-scrim ${drawer ? "open" : ""}`} aria-hidden onClick={() => setDrawer(false)} />
       <aside className={`sidebar ${drawer ? "open" : ""}`}>
         <button className="drawer-close btn btn-ghost btn-sm" onClick={() => setDrawer(false)} aria-label="Close menu">{Icon.x}</button>
         <div className="brand"><Logo /><span>{workspace.name}<small>Workspace</small></span></div>

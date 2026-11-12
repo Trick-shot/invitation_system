@@ -157,3 +157,29 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.55; }
 .ob-tip h4 { color: var(--text-accent); font-size: 15px; }
 .ob-timeline { width: 100%; background: var(--bg-inset); border-radius: var(--r-xl); padding: 6px 18px; }
 .ob-timeline .trow { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+
+/* ---------- Motion system ----------
+   Rule: one thing finishes, then the next appears. Nothing pops in or out.
+   - Page and tab changes: .page-fx (motion.tsx), old page fades out, then the new fades in.
+   - Content replacing a skeleton fades in instead of snapping.
+   - Skeletons wait 120 ms before showing, so a fast load never flashes grey bars.
+   - Overlays: backdrop and panel share one duration and curve, in and out. */
+.page-fx { display: flex; flex-direction: column; gap: inherit; min-width: 0; }
+.skeleton { animation: shimmer 1.4s infinite, skel-in .2s ease .12s both; }
+@keyframes skel-in { from { opacity: 0; } to { opacity: 1; } }
+.panel, .stats, .event-card, .empty, .state-error, .readiness, .guest-facts, .m-guest, .ob-item, .history, .split, .template-editor, .scan-groups, .notice { animation: fx-in .22s var(--ease-move) both; }
+@keyframes fx-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .panel, .stats, .event-card, .empty, .state-error, .readiness, .guest-facts, .m-guest, .ob-item, .history, .split, .template-editor, .scan-groups, .notice { animation: none; }
+}
+
+/* ---------- iOS form fixes ----------
+   iOS gives date and time inputs a built-in minimum width. Side by side in a row they were
+   wider than the phone, so the whole sheet overflowed and scrolled sideways (content cut on
+   the left). Fields in a row now share the width and may shrink; the native date box is
+   reset so it fills its field, keeps its height when empty, and aligns left like other inputs. */
+.row > .field { flex: 1 1 0; min-width: 0; }
+input[type="date"].input, input[type="time"].input { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; min-height: 48px; text-align: left; }
+input[type="date"].input::-webkit-date-and-time-value, input[type="time"].input::-webkit-date-and-time-value { text-align: left; }
+.modal { max-width: 100%; overflow-x: hidden; }

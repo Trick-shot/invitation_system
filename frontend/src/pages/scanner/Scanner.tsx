@@ -41,7 +41,8 @@ export default function Scanner() {
   return <ScanScreen event={event} onChangeEvent={() => { localStorage.removeItem("ti.scan.event"); setEventId(null); }} />;
 }
 
-type State = { kind: "idle" } | { kind: "checking" } | { kind: "verdict"; v: Verdict } | { kind: "offline" } | { kind: "search" };
+// "closing": the sheet is sliding away; the tint stays until it has gone, then the camera comes back.
+type State = { kind: "idle" } | { kind: "checking" } | { kind: "verdict"; v: Verdict } | { kind: "closing"; v: Verdict } | { kind: "offline" } | { kind: "search" };
 
 const toneOf = (r: Verdict["result"]) => (r === "accepted" ? "ok" : r === "exhausted" || r === "unknown" ? "bad" : "warn");
 
@@ -112,9 +113,14 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
   }, [state]);
   useEffect(() => { const on = () => state.kind === "offline" && dismiss(); window.addEventListener("online", on); return () => window.removeEventListener("online", on); }, [state.kind]);
 
-  function dismiss() { paused.current = false; setState({ kind: "idle" }); }
+  // One thing at a time: the sheet leaves first, then the tint fades, then scanning resumes.
+  // Resuming earlier would let a new verdict start on top of the one still leaving.
+  function dismiss() {
+    setState((s) => (s.kind === "verdict" ? { kind: "closing", v: s.v } : s.kind === "closing" ? s : { kind: "idle" }));
+    if (state.kind !== "verdict" && state.kind !== "closing") paused.current = false;
+  }
   const resumeVideo = () => { const el = document.querySelector("#reader video") as HTMLVideoElement | null; if (el && el.paused) void el.play(); };
-  const tone = state.kind === "verdict" ? toneOf(state.v.result) : null;
+  const tone = state.kind === "verdict" || state.kind === "closing" ? toneOf(state.v.result) : null;
 
   return (
     <div className="sc">
@@ -127,19 +133,21 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
       </div>
       <div className={`cam theme-dark ${state.kind}`} onClick={resumeVideo} style={{ display: state.kind === "search" ? "none" : undefined }}>
         <div id="reader" />
-        <div className="reticle"><i /><i /><i /><i /><span className="scanline" /></div>
+        <div className="reticle"><i /><i /><i /><i /></div>
         <div className="hint">Hold the code inside the frame.<br />It scans automatically.</div>
-        <AnimatePresence>
-          {tone && <motion.div key={tone} className={`flash ${tone}`} initial={{ opacity: 0 }} animate={{ opacity: [0, 0.85, 0.35] }} exit={{ opacity: 0 }} transition={{ duration: 0.5, times: [0, 0.3, 1] }} />}
+        <AnimatePresence onExitComplete={() => { paused.current = false; }}>
+          {tone && <motion.div key="tint" className={`flash ${tone}`} initial={{ opacity: 0 }} animate={{ opacity: 0.88 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} />}
         </AnimatePresence>
         {camera === "blocked" && state.kind !== "offline" && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", color: "rgba(255,255,255,.85)", padding: 24 }}><div><b>Camera not available</b><div style={{ fontSize: 13, marginTop: 6 }}>Allow camera access for this site, or find guests by name below.</div></div></div>}
-        {state.kind === "checking" && <div className="checking"><Loader size={16} /> Checking</div>}
+        <AnimatePresence>
+          {state.kind === "checking" && <motion.div key="chk" className="checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}><Loader size={16} /> Checking</motion.div>}
+        </AnimatePresence>
         {state.kind === "offline" && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><Illustration name="no-signal" size={120} /></div>}
       </div>
       {state.kind === "search"
         ? <SearchByName event={event} onPick={(id) => submit({ invitation_id: id })} onCancel={dismiss} />
         : <div className="sc-foot"><Button size="lg" block onClick={() => { paused.current = true; setState({ kind: "search" }); }}>Find a guest by name</Button></div>}
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={() => setState((s) => (s.kind === "closing" ? { kind: "idle" } : s))}>
         {state.kind === "verdict" && <VerdictSheet key="v" v={state.v} onDismiss={dismiss} onFind={() => { paused.current = true; setState({ kind: "search" }); }} />}
         {state.kind === "offline" && (
           <motion.div key="off" className="sheet theme-dark" style={{ background: "#262220" }} {...sheetMotion}>
@@ -152,7 +160,12 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
   );
 }
 
-const sheetMotion = { initial: { y: "100%" }, animate: { y: 0 }, exit: { y: "100%" }, transition: { type: "spring" as const, stiffness: 420, damping: 36, mass: 0.9 } };
+const SHEET_IN = [0.32, 0.72, 0, 1] as const;
+const sheetMotion = {
+  initial: { y: "100%" },
+  animate: { y: 0, transition: { duration: 0.32, ease: SHEET_IN, delay: 0.16 } },
+  exit: { y: "100%", transition: { duration: 0.24, ease: [0.4, 0, 1, 1] as const } },
+};
 
 function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => void; onFind: () => void }) {
   const ok = v.result === "accepted";
@@ -171,7 +184,7 @@ function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => v
         <div className={`dots ${ok ? "" : "bad"}`}>
           {Array.from({ length: v.capacity }).map((_, i) => (
             <motion.i key={i} className={i < v.admitted_count ? "on" : ""}
-              initial={i < v.admitted_count ? { scale: 0.4 } : false} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 22, delay: 0.5 + i * 0.07 }} />
+              initial={i < v.admitted_count ? { opacity: 0.3 } : false} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.55 + i * 0.06 }} />
           ))}
           <span style={{ marginLeft: 6 }}>{v.capacity === 1 ? (ok ? "Admits 1 person" : "1 of 1 in") : ok ? `${v.admitted_count} of ${v.capacity} in` : `${v.capacity} of ${v.capacity} in`}</span>
         </div>
@@ -183,7 +196,7 @@ function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => v
         {ok ? <Button size="lg" onClick={onDismiss}>Next guest</Button> : <Button variant="ink" size="lg" onClick={onDismiss}>Next guest</Button>}
         {v.result === "unknown" && <Button size="lg" onClick={onFind}>Find by name</Button>}
       </div>
-      {ok && <motion.div className="auto-bar" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 2.6, ease: "linear" }} />}
+      {ok && <motion.div className="auto-bar" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 2.1, ease: "linear", delay: 0.5 }} />}
     </motion.div>
   );
 }

@@ -113,7 +113,7 @@ export function useIsPhone() {
 }
 
 /* Lock the page behind an open modal. iOS ignores overflow:hidden on body, so we pin it and restore the scroll position on close. */
-function useScrollLock(active: boolean) {
+export function useScrollLock(active: boolean) {
   useEffect(() => {
     if (!active) return;
     const y = window.scrollY;
@@ -134,19 +134,28 @@ export function Modal({ open, onClose, title, sub, children, actions, wide }: { 
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
   // Phones get a sheet that slides up; a scaled pop looks wrong on a box pinned to the screen edge.
+  // Backdrop and panel share one duration and curve, in and out, so neither appears or
+  // vanishes ahead of the other. Eased slides, not springs: nothing overshoots.
+  const IN = { duration: 0.3, ease: [0.32, 0.72, 0, 1] as const };
+  const OUT = { duration: 0.22, ease: [0.4, 0, 1, 1] as const };
   const motionProps = phone
-    ? { initial: { y: "100%" }, animate: { y: 0 }, exit: { y: "100%" }, transition: { type: "spring" as const, stiffness: 380, damping: 38, mass: 0.9 } }
-    : { initial: { y: 16, scale: 0.97, opacity: 0 }, animate: { y: 0, scale: 1, opacity: 1 }, exit: { y: 8, scale: 0.98, opacity: 0 }, transition: { type: "spring" as const, stiffness: 420, damping: 32, mass: 0.8 } };
+    ? { initial: { y: "100%" }, animate: { y: 0, transition: IN }, exit: { y: "100%", transition: OUT } }
+    : { initial: { y: 12, opacity: 0 }, animate: { y: 0, opacity: 1, transition: IN }, exit: { y: 6, opacity: 0, transition: OUT } };
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <motion.div className="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: IN }} exit={{ opacity: 0, transition: OUT }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
           <motion.div className={`modal ${phone ? "sheet" : ""}`} style={wide && !phone ? { maxWidth: 760 } : undefined} role="dialog" aria-modal {...motionProps}>
             {phone && <div className="sheet-handle" aria-hidden />}
-            <h2>{title}</h2>
-            {sub && <p className="sub">{sub}</p>}
-            <div style={{ marginTop: 20 }}>{children}</div>
-            {actions && <div className="modal-actions">{actions}</div>}
+            {/* When the same dialog changes step (view, edit, confirm), the old content fades out before the new fades in. */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={title} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.16 } }} exit={{ opacity: 0, transition: { duration: 0.1 } }}>
+                <h2>{title}</h2>
+                {sub && <p className="sub">{sub}</p>}
+                <div style={{ marginTop: 20 }}>{children}</div>
+                {actions && <div className="modal-actions">{actions}</div>}
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
         </motion.div>
       )}

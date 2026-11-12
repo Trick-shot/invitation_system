@@ -14,6 +14,9 @@
   --font-display: "Poppins", system-ui, sans-serif; --font-body: "Plus Jakarta Sans", system-ui, sans-serif; --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --shadow-float: 0 12px 40px rgba(26, 20, 41, 0.06); --shadow-pop: 0 4px 12px rgba(26, 26, 31, 0.1);
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Motion system: one curve for things that move in, one for things that leave. 180 to 300 ms, never a bounce. */
+  --ease-move: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-leave: cubic-bezier(0.4, 0, 1, 1);
 }
 .theme-dark {
   --bg-canvas: #0c0a09; --bg-base: #16130f; --bg-surface: #262220; --bg-raised: #332e2a; --bg-inset: #0c0a09; --bg-hover: #332e2a; --bg-accent-subtle: #2a1b46;

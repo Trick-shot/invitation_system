@@ -87,9 +87,11 @@
   .d-only { display: none !important; }
   .shell { grid-template-columns: 1fr; }
   /* sidebar becomes a drawer */
-  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(300px, 84vw); z-index: 40; transform: translateX(-104%); transition: transform .28s cubic-bezier(.22,1,.36,1); box-shadow: var(--shadow-float); height: 100dvh; }
-  .sidebar.open { transform: none; }
-  .drawer-scrim { display: block; position: fixed; inset: 0; background: rgba(22, 19, 15, .35); z-index: 39; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(300px, 84vw); z-index: 40; transform: translateX(-104%); transition: transform .3s var(--ease-move); box-shadow: none; height: 100dvh; will-change: transform; }
+  .sidebar.open { transform: none; box-shadow: var(--shadow-float); }
+  /* Same duration and curve as the drawer, always in the DOM: it eases in as the drawer slides in and out as it slides out. */
+  .drawer-scrim { display: block; position: fixed; inset: 0; background: rgba(22, 19, 15, .3); z-index: 39; opacity: 0; pointer-events: none; transition: opacity .3s var(--ease-move); }
+  .drawer-scrim.open { opacity: 1; pointer-events: auto; }
   .drawer-close { display: inline-flex; position: absolute; top: 12px; right: 12px; }
   .sidebar .brand { padding-right: 40px; }
   /* top bar */
