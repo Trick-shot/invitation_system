@@ -123,3 +123,18 @@ def test_welcome_sms_respects_switch_and_custom_text(api_a, staff_a, ws_a, event
     with django_capture_on_commit_callbacks(execute=True):
         scan(client_for(staff_a), event_a, other.token)
     assert len(welcomes) == 1
+
+
+def test_scan_log_grouped_by_guest(api_a, staff_a, ws_a, event_a, inv_a):
+    c = client_for(staff_a)
+    scan(c, event_a, inv_a.token)
+    scan(c, event_a, inv_a.token)
+    scan(c, event_a, inv_a.token)  # card full: a reuse attempt
+    scan(c, event_a, "not-a-real-token-123")
+    r = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/scans/guests/")
+    assert r.status_code == 200
+    g = r.data["guests"]
+    assert len(g) == 1 and g[0]["name"] == "Amina Hassan" and g[0]["stage"] == "All in" and g[0]["reused"] == 1
+    assert [a["result"] for a in g[0]["attempts"]] == ["exhausted", "accepted", "accepted"]
+    assert g[0]["last_staff"] == {"name": "Joseph Mwita", "email": staff_a.email}
+    assert r.data["unrecognised"]["count"] == 1 and r.data["total_scans"] == 4

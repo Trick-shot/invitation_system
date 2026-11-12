@@ -140,6 +140,12 @@
   .table.m-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
   .table.m-cards td[style*="text-align: right"] { text-align: left !important; padding-top: 8px; }
   .table.m-cards td[style*="text-align: right"] .row { justify-content: flex-start !important; }
+  .log-tools .search { width: 100% !important; } .log-tools .log-total { margin-left: 0; width: 100%; }
+  .log-head { grid-template-columns: 1fr 20px; gap: 8px 12px; padding: 14px 16px; }
+  .log-who { grid-column: 1; } .log-chev { grid-column: 2; grid-row: 1; }
+  .log-stage, .log-last { grid-column: 1 / -1; }
+  .log-timeline { padding: 4px 16px 12px 20px; }
+  .log-timeline li { grid-template-columns: 48px 1fr; }
   /* modals become sheets */
   .scrim { place-items: end center !important; padding: 0 !important; }
   .modal.sheet { width: 100% !important; max-width: none !important; border-radius: 18px 18px 0 0 !important; max-height: 92dvh; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 10px 20px calc(24px + env(safe-area-inset-bottom, 0px)); will-change: transform; }
@@ -188,6 +194,29 @@
 .iphone-compose { display: flex; align-items: center; gap: 8px; padding: 8px 12px 14px; }
 .iphone-compose span { width: 30px; height: 30px; border-radius: 50%; background: #26262b; display: grid; place-items: center; color: #aaa; }
 .iphone-field { flex: 1; border: 1px solid #333; border-radius: 16px; padding: 6px 12px; font-size: 13px; color: #6c6c74; }
+/* Scan log grouped by guest */
+.log-tools .log-total { margin-left: auto; font-size: 13px; }
+.log-list { padding: 0; overflow: hidden; }
+.log-row { border-bottom: 1px solid var(--border-subtle); }
+.log-row:last-child { border-bottom: 0; }
+.log-head { width: 100%; display: grid; grid-template-columns: minmax(180px, 1.3fr) minmax(160px, 1fr) minmax(200px, 1fr) 20px; align-items: center; gap: 16px; padding: 14px 18px; background: none; border: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.log-head:hover { background: var(--bg-inset); }
+.log-row.open > .log-head { background: var(--bg-inset); }
+.log-who, .staff-ref { display: flex; flex-direction: column; min-width: 0; }
+.log-who b { font-weight: 600; } .log-who .quiet, .staff-ref .quiet { font-size: 12px; }
+.staff-ref > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-stage { display: flex; gap: 6px; flex-wrap: wrap; }
+.log-last { display: flex; gap: 12px; align-items: baseline; min-width: 0; font-size: 14px; }
+.log-chev { color: var(--text-tertiary); transition: transform .2s; display: grid; place-items: center; }
+.log-row.open .log-chev { transform: rotate(180deg); }
+.log-timeline { list-style: none; margin: 0; padding: 4px 18px 14px 28px; overflow: hidden; background: var(--bg-inset); }
+.log-timeline li { position: relative; display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 8px 0 8px 18px; font-size: 14px; }
+.log-timeline li::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; background: var(--border-default); }
+.log-timeline li:first-child::before { top: 14px; } .log-timeline li:last-child::before { bottom: calc(100% - 14px); }
+.tl-dot { position: absolute; left: 0; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: var(--text-tertiary); box-shadow: 0 0 0 3px var(--bg-inset); }
+.tl-success .tl-dot { background: var(--success); } .tl-danger .tl-dot { background: var(--danger); } .tl-warning .tl-dot { background: var(--warning); }
+.tl-time { color: var(--text-secondary); }
+.tl-what { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .welcome-block { border-top: 1px solid var(--border-subtle); padding-top: 16px; display: flex; flex-direction: column; gap: 12px; }
 .switch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; cursor: pointer; }
 .switch { appearance: none; -webkit-appearance: none; flex: none; width: 44px; height: 26px; border-radius: 13px; background: var(--border-strong); position: relative; cursor: pointer; transition: background .2s; margin: 2px 0 0; }

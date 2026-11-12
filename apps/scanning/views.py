@@ -2,6 +2,7 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import Http404
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -114,11 +115,57 @@ class ScanSearchView(APIView):
             )
 
 
+def _staff(user):
+    if user is None:
+        return {"name": "", "email": ""}
+    return {"name": (user.full_name or "").strip(), "email": user.email}
+
+
+def _stage(inv, attempts):
+    """Where this guest stands now, in the words the door team uses."""
+    if inv.admitted_count >= inv.capacity:
+        stage, tone = ("In" if inv.capacity == 1 else "All in"), "success"
+    elif inv.admitted_count > 0:
+        stage, tone = f"{inv.admitted_count} of {inv.capacity} in", "accent"
+    else:
+        stage, tone = "Not let in", "warning"
+    # A full card scanned again is the thing worth a second look: a shared or copied code.
+    reused = sum(1 for a in attempts if a.result == ScanLog.Result.EXHAUSTED)
+    return stage, tone, reused
+
+
 class ScanLogViewSet(WorkspaceReadOnlyViewSet):
     """The admin's scan log for one event."""
 
     default_roles = MANAGERS
-    role_map = {"list": MANAGERS, "retrieve": MANAGERS}
+    role_map = {"list": MANAGERS, "retrieve": MANAGERS, "guests": MANAGERS}
+
+    @action(detail=False, methods=["get"])
+    def guests(self, request, *args, **kwargs):
+        """One entry per guest who was scanned, newest activity first, with every attempt inside.
+        Codes that matched no guest are gathered into a single entry at the end."""
+        logs = list(self.get_queryset().order_by("-created_at")[:5000])
+        by_inv, unknown = {}, []
+        for s in logs:
+            if s.invitation_id:
+                by_inv.setdefault(s.invitation_id, []).append(s)
+            else:
+                unknown.append(s)
+
+        def attempt(s):
+            return {"id": s.id, "at": s.created_at, "result": s.result, "manual": s.manual, "device_id": s.device_id, "staff": _staff(s.staff), "admitted_after": s.admitted_after}
+
+        rows = []
+        for attempts in by_inv.values():
+            inv = attempts[0].invitation
+            stage, tone, reused = _stage(inv, attempts)
+            rows.append({
+                "invitation_id": inv.id, "name": inv.name, "phone": inv.phone, "capacity": inv.capacity, "admitted_count": inv.admitted_count,
+                "stage": stage, "tone": tone, "reused": reused, "manual": any(a.manual for a in attempts),
+                "last_at": attempts[0].created_at, "last_staff": _staff(attempts[0].staff), "attempts": [attempt(a) for a in attempts],
+            })
+        unrecognised = {"count": len(unknown), "last_at": unknown[0].created_at if unknown else None, "attempts": [attempt(a) for a in unknown[:100]]}
+        return Response({"guests": rows, "unrecognised": unrecognised, "total_scans": len(logs)})
 
     def get_queryset(self):
         return ScanLog.objects.filter(workspace=self.workspace, event_id=self.kwargs["event_pk"]).select_related("staff", "invitation")
@@ -133,6 +180,7 @@ class ScanLogViewSet(WorkspaceReadOnlyViewSet):
                 "manual": s.manual,
                 "device_id": s.device_id,
                 "staff": (s.staff.full_name or s.staff.email) if s.staff else "",
+                "staff_detail": _staff(s.staff),
                 "guest": s.invitation.name if s.invitation else "",
                 "admitted_after": s.admitted_after,
             }

@@ -40,6 +40,11 @@ export interface SendProgress { counts: Record<DeliveryStatus, number>; total: n
 export interface Member { id: number; email: string; full_name: string; phone: string; initials: string; role: Role; is_active: boolean; created_at: string }
 export interface ScanLogRow { id: number; at: string; result: string; manual: boolean; device_id: string; staff: string; guest: string; admitted_after: number }
 
+export interface StaffRef { name: string; email: string }
+export interface ScanAttempt { id: number; at: string; result: string; manual: boolean; device_id: string; staff: StaffRef; admitted_after: number }
+export interface ScanGuestLog { invitation_id: number; name: string; phone: string; capacity: number; admitted_count: number; stage: string; tone: "success" | "accent" | "warning"; reused: number; manual: boolean; last_at: string; last_staff: StaffRef; attempts: ScanAttempt[] }
+export interface ScanLogGrouped { guests: ScanGuestLog[]; unrecognised: { count: number; last_at: string | null; attempts: ScanAttempt[] }; total_scans: number }
+
 export interface WorkspaceSettings { name: string; slug: string; logo: string | null; timezone: string; default_country: string; default_language: string; messaging: { mode: "platform" | "own"; provider?: string; sender_id: string; api_key_masked: string } }
 
 export type ScanResult = "accepted" | "exhausted" | "unknown" | "wrong_event" | "closed";
