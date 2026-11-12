@@ -32,7 +32,13 @@ export default function SignIn({ staff = false }: { staff?: boolean }) {
   };
 
   return (
-    <AuthFrame>
+    <AuthFrame blob={!staff}>
+      {staff && (
+        <>
+          <div className="staff-brand"><img src="/email-mark.png" alt="" width={22} height={22} style={{ borderRadius: 5 }} /> Trickshot Invitations</div>
+          <div className="staff-hero" aria-hidden><i /><i /><i /><i /><img src="/illustrations/scanner-phone.png" alt="" /></div>
+        </>
+      )}
       <h1>{staff ? "Sign in as staff" : "Sign in"}</h1>
       {staff && <p className="muted" style={{ marginTop: -6 }}>For the door team. Use the email your event admin added you with.</p>}
       <form onSubmit={submit}>

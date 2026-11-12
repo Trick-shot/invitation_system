@@ -138,7 +138,7 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
         ? <SearchByName event={event} onPick={(id) => submit({ invitation_id: id })} onCancel={dismiss} />
         : <div className="sc-foot"><Button size="lg" block onClick={() => { paused.current = true; setState({ kind: "search" }); }}>Find a guest by name</Button></div>}
       <AnimatePresence>
-        {state.kind === "verdict" && <VerdictSheet key="v" v={state.v} onDismiss={dismiss} />}
+        {state.kind === "verdict" && <VerdictSheet key="v" v={state.v} onDismiss={dismiss} onFind={() => { paused.current = true; setState({ kind: "search" }); }} />}
         {state.kind === "offline" && (
           <motion.div key="off" className="sheet theme-dark" style={{ background: "#262220" }} {...sheetMotion}>
             <div className="verdict"><span className="badge-big" style={{ background: "#44403c" }}>{Icon.x}</span><div><h2>No connection</h2><div className="who">Scanning is paused. Hold the queue until this clears.</div></div></div>
@@ -152,7 +152,7 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
 
 const sheetMotion = { initial: { y: "100%" }, animate: { y: 0 }, exit: { y: "100%" }, transition: { type: "spring" as const, stiffness: 420, damping: 36, mass: 0.9 } };
 
-function VerdictSheet({ v, onDismiss }: { v: Verdict; onDismiss: () => void }) {
+function VerdictSheet({ v, onDismiss, onFind }: { v: Verdict; onDismiss: () => void; onFind: () => void }) {
   const ok = v.result === "accepted";
   const tone = toneOf(v.result);
   const title = { accepted: "Admitted", exhausted: "Already in", unknown: "Not recognised", wrong_event: "Wrong event", closed: "Doors not open" }[v.result];
@@ -179,6 +179,7 @@ function VerdictSheet({ v, onDismiss }: { v: Verdict; onDismiss: () => void }) {
       )}
       <div className="sheet-actions">
         {ok ? <Button size="lg" onClick={onDismiss}>Next guest</Button> : <Button variant="ink" size="lg" onClick={onDismiss}>Next guest</Button>}
+        {v.result === "unknown" && <Button size="lg" onClick={onFind}>Find by name</Button>}
       </div>
       {ok && <motion.div className="auto-bar" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 2.6, ease: "linear" }} />}
     </motion.div>
