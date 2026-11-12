@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../../api/client";
 import { homeFor, useAuth } from "../../auth/AuthProvider";
+import { whenIdle } from "../../lazy";
+import { preloadAdmin, Scanner } from "../../pages";
 import { Button, Field, Input } from "../../components/ui";
 import { AuthFrame } from "./AuthFrame";
 import "./auth.css";
@@ -20,7 +22,11 @@ export default function SignIn({ staff = false }: { staff?: boolean }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const landing = (m: Parameters<typeof homeFor>[0]) => (staff ? "/scan" : homeFor(m));
+  const from = (useLocation().state as { from?: string } | null)?.from;
+  // Back to where a signed-out link pointed (e.g. a shared event URL), else the person's home.
+  const landing = (m: Parameters<typeof homeFor>[0]) => (staff ? "/scan" : from && from.startsWith("/app/") ? from : homeFor(m));
+  // While they type, fetch the next screen's code so signing in lands instantly.
+  useEffect(() => { whenIdle(() => (staff ? Scanner.preload() : preloadAdmin())); }, [staff]);
   if (me) return <Navigate to={landing(me)} replace />;
 
   const submit = async (e: FormEvent) => {

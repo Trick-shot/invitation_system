@@ -127,6 +127,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "scan": config("THROTTLE_SCAN", default="120/min"),
         "public_link": config("THROTTLE_PUBLIC_LINK", default="60/min"),
+        "public_poll": config("THROTTLE_PUBLIC_POLL", default="600/min"),
         "auth": config("THROTTLE_AUTH", default="10/min"),
     },
     "EXCEPTION_HANDLER": "apps.tenancy.exceptions.exception_handler",

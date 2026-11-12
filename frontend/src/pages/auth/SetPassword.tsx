@@ -4,6 +4,7 @@ import { api, ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { Button, Field, Illustration, Input } from "../../components/ui";
 import "../onboarding/onboarding.css";
+import { PageLoader } from "../../components/ui/states";
 
 interface Info { workspace_name: string; invited_by: string; email: string; full_name: string; valid: boolean }
 
@@ -31,7 +32,7 @@ export default function SetPassword() {
     finally { setBusy(false); }
   };
 
-  if (info === null) return <div className="ob-canvas"><div className="spinner" /></div>;
+  if (info === null) return <PageLoader />;
   const invalid = info === "missing" || !info.valid;
   return (
     <div className="ob-canvas">

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { api, ev } from "../../api/client";
 import type { ScanAttempt, ScanGuestLog, ScanLogGrouped, StaffRef } from "../../api/types";
-import { Badge, Chip, Empty, fmtTime } from "../../components/ui";
+import { Badge, Chip, Empty, fmtTime, ErrorState, Skel, SkelRows } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
 
@@ -34,6 +34,7 @@ export default function ScanLog() {
       (filter === "" || (filter === "partial" && g.admitted_count < g.capacity) || (filter === "reused" && g.reused > 0) || (filter === "manual" && g.manual)));
   }, [q.data, search, filter]);
 
+  if (!q.data) return q.isError ? <div className="panel"><ErrorState title="The scan log did not load" onRetry={() => q.refetch()} /></div> : <div className="stack" aria-hidden><div className="row" style={{ gap: 8 }}><Skel w={240} h={36} r={8} /><Skel w={70} h={32} r={16} /><Skel w={110} h={32} r={16} /></div><div className="panel"><SkelRows rows={6} /></div></div>;
   if (q.data && q.data.total_scans === 0) return <div className="panel"><Empty illustration="scanner-phone" title="No scans yet">Every scan at the door lands here, grouped by guest, with who scanned them and when.</Empty></div>;
   const counts = { reused: q.data?.guests.filter((g) => g.reused > 0).length ?? 0 };
   const un = q.data?.unrecognised;

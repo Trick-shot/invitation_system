@@ -1,33 +1,73 @@
-import { useQuery } from "@tanstack/react-query";
-import { Navigate, Outlet, useParams } from "react-router-dom";
-import { api, ev } from "../../api/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Navigate, Outlet, useNavigate, useParams } from "react-router-dom";
+import { api, ApiError, ev, ws } from "../../api/client";
 import type { Event } from "../../api/types";
-import { Badge, Button, CardThumb, Tabs, fmtDate, PageTransition } from "../../components/ui";
+import { Badge, Button, CardThumb, ErrorState, Skel, SkelPanel, SkelRows, Tabs, fmtDate, PageTransition, useToast } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 import { EditEventModal } from "./Events";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { whenIdle } from "../../lazy";
+import { preloadEventTabs } from "../../pages";
 
 export function useEvent() {
   const { slug } = useWorkspace();
   const { eventId = "" } = useParams();
   const q = useQuery({ queryKey: ["event", slug, eventId], queryFn: () => api<Event>(`${ev(slug, eventId)}/`), enabled: !!eventId });
-  return { slug, eventId, event: q.data, refetch: q.refetch, isLoading: q.isLoading, error: q.error };
+  return { slug, eventId, event: q.data, refetch: q.refetch, isLoading: q.isLoading, error: q.error as ApiError | null };
+}
+
+/**
+ * Overview renders first. Once the browser is idle, fetch the code and the first
+ * screen of data for every other tab, so switching tabs shows content, not a spinner.
+ */
+function usePrefetchTabs(slug: string, eventId: string, ready: boolean) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!ready) return;
+    whenIdle(() => {
+      preloadEventTabs();
+      const base = ev(slug, eventId);
+      const pf = (queryKey: unknown[], url: string, allow404 = false) =>
+        qc.prefetchQuery({ queryKey, staleTime: 30_000, queryFn: () => api(url).catch((e: ApiError) => { if (allow404 && e.status === 404) return null; throw e; }) });
+      pf(["invitations", slug, eventId, "", "", 1], `${base}/invitations/?page=1&page_size=50&filter=&q=`);
+      pf(["template", slug, eventId], `${base}/template/`, true);
+      pf(["message", slug, eventId], `${base}/message/`);
+      pf(["scans-grouped", slug, eventId], `${base}/scans/guests/`);
+      pf(["members", slug], `${ws(slug)}/members/?page_size=100`);
+    }, 1500);
+  }, [ready, slug, eventId, qc]);
+}
+
+/** Placeholder for a tab whose code is still arriving. Same rhythm as a real tab: a toolbar, then a panel. */
+export function TabSkeleton() {
+  return <div className="stack" aria-hidden><div className="row" style={{ gap: 8 }}><Skel w={220} h={36} r={8} /><Skel w={90} h={32} r={16} /><Skel w={90} h={32} r={16} /></div><div className="panel"><SkelRows rows={5} /></div></div>;
 }
 
 export default function EventLayout() {
-  const { slug, eventId, event, isLoading, error } = useEvent();
+  const { slug, eventId, event, isLoading, error, refetch } = useEvent();
   const [editing, setEditing] = useState(false);
-  if (error) return <Navigate to={`/app/${slug}`} replace />;
+  const nav = useNavigate();
+  const toast = useToast();
+  usePrefetchTabs(slug, eventId, !!event);
+  const gone = error?.status === 404 || error?.status === 403;
+  useEffect(() => { if (gone) toast("That event no longer exists, or you do not have access to it", true); }, [gone]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (gone) return <Navigate to={`/app/${slug}`} replace />;
   const base = `/app/${slug}/events/${eventId}`;
   const tabs = [{ to: base, label: "Overview", end: true }, { to: `${base}/guests`, label: "Guests" }, { to: `${base}/template`, label: "Template" }, { to: `${base}/message`, label: "Message" }, { to: `${base}/staff`, label: "Staff" }, { to: `${base}/send`, label: "Send" }, { to: `${base}/scans`, label: "Scan log" }];
   const status = event?.status === "open" ? <Badge tone="success" dot>Doors open</Badge> : event?.status === "closed" ? <Badge dot>Closed</Badge> : <Badge dot>Draft</Badge>;
   return (
     <>
-      <Topbar crumbs={[{ to: `/app/${slug}`, label: "Events" }, event?.name ?? "…"]} searchPlaceholder="Search guests, phone or card number" right={status}
-        title={event?.name ?? "…"} sub={event ? `${fmtDate(event.date, true)}${event.venue ? `, ${event.venue}` : ""}` : undefined} back={`/app/${slug}`} />
+      <Topbar crumbs={[{ to: `/app/${slug}`, label: "Events" }, event?.name ?? "Event"]} searchPlaceholder="Search guests, phone or card number" right={event ? status : undefined}
+        onSubmit={(q) => nav(`/app/${slug}/events/${eventId}/guests${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`)}
+        title={event?.name ?? "Event"} sub={event ? `${fmtDate(event.date, true)}${event.venue ? `, ${event.venue}` : ""}` : undefined} back={`/app/${slug}`} />
       <div className="content" style={{ paddingBottom: 0, gap: 16 }}>
-        {isLoading || !event ? (
-          <div className="stack"><div className="skeleton" style={{ height: 36, width: 380 }} /><div className="skeleton" style={{ height: 62 }} /></div>
+        {error && !gone ? (
+          <div className="panel"><ErrorState title="This event did not load" onRetry={() => refetch()} /></div>
+        ) : isLoading || !event ? (
+          <div className="stack" aria-hidden>
+            <div className="event-head"><Skel w={44} h={58} r={6} /><div className="grow" style={{ display: "grid", gap: 8 }}><Skel w="45%" h={26} /><Skel w="30%" h={14} /></div></div>
+            <div className="readiness">{["Template", "Message", "Guests", "People", "Arrived"].map((k) => <div key={k}><div className="kicker">{k}</div><Skel w={70} h={14} style={{ marginTop: 6 }} /></div>)}</div>
+          </div>
         ) : (
           <>
             <div className="event-head">
@@ -48,7 +88,7 @@ export default function EventLayout() {
         <div className="row" style={{ gap: 8, alignItems: "stretch" }}><div className="grow" style={{ minWidth: 0 }}><Tabs items={tabs} /></div>{event && <button className="m-only btn btn-ghost btn-sm" style={{ alignSelf: "center" }} onClick={() => setEditing(true)}>Edit</button>}</div>
       </div>
       <div className="content" style={{ paddingTop: 20 }}>
-        <PageTransition><Outlet /></PageTransition>
+        {event ? <Suspense fallback={<TabSkeleton />}><PageTransition><Outlet /></PageTransition></Suspense> : !error && <SkelPanel h={260} />}
       </div>
     </>
   );

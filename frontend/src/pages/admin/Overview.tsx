@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, ev } from "../../api/client";
 import type { Dashboard, Invitation, Paginated } from "../../api/types";
-import { Avatar, Stat, Track, fmtTime, Stagger, Rise } from "../../components/ui";
+import { Avatar, ErrorState, SkelPanel, SkelStats, Stat, Track, fmtTime, Stagger, Rise } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 
 export default function Overview() {
@@ -11,7 +11,9 @@ export default function Overview() {
   const dash = useQuery({ queryKey: ["dashboard", slug, eventId], queryFn: () => api<Dashboard>(`${ev(slug, eventId)}/dashboard/`), refetchInterval: 30_000 });
   const latest = useQuery({ queryKey: ["invitations", slug, eventId, "latest"], queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page_size=8`) });
   const d = dash.data;
-  if (!d) return <div className="stack"><div className="skeleton" style={{ height: 120 }} /><div className="skeleton" style={{ height: 260 }} /></div>;
+  if (!d && dash.isError) return <div className="panel"><ErrorState title="The overview did not load" onRetry={() => dash.refetch()} /></div>;
+  // Same layout as the loaded page, with grey bars in place of numbers: never a fake zero.
+  if (!d) return <div className="stack" aria-hidden style={{ gap: 20 }}><SkelStats /><SkelPanel h={200} /><div className="split"><SkelPanel h={180} /><SkelPanel h={180} /></div></div>;
   const base = `/app/${slug}/events/${eventId}`;
   return (
     <>
@@ -56,6 +58,8 @@ export default function Overview() {
         <table className="table m-cards">
           <thead><tr><th>Guest</th><th>Phone</th><th>Sent</th><th>Card opened</th><th>Admitted</th></tr></thead>
           <tbody>
+            {latest.isLoading && [0, 1, 2].map((i) => <tr key={i} aria-hidden><td colSpan={5}><div className="skeleton" style={{ height: 18 }} /></td></tr>)}
+            {latest.data && latest.data.results.length === 0 && <tr><td colSpan={5} className="quiet" style={{ textAlign: "center", padding: 24 }}>No guests yet. <Link to={`${base}/guests`}>Add the first ones</Link></td></tr>}
             {(latest.data?.results ?? []).map((g) => (
               <tr key={g.id}>
                 <td><div className="row"><Avatar initials={g.initials} /><div>{g.name}<div className="quiet" style={{ fontSize: 12 }}>{g.capacity} {g.capacity === 1 ? "person" : "people"} on the card</div></div></div></td>

@@ -56,7 +56,7 @@ def test_changing_template_invalidates_cards(api_a, ws_a, event_a, inv_a):
     with workspace_context(ws_a):
         inv_a.refresh_from_db()
     assert inv_a.card_status == "ready"  # regenerated inline because Q runs sync in tests
-    assert inv_a.card.name.endswith(f"{inv_a.token}.png")
+    assert inv_a.card.name.endswith(f"{inv_a.token}.jpg")
 
 
 def test_dashboard_shape(api_a, ws_a, event_a, inv_a):

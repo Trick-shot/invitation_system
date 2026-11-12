@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { Dashboard, Invitation, MessageTemplate, Paginated, SendProgress } from "../../api/types";
-import { Badge, Button, Track, useToast, DoneTick } from "../../components/ui";
+import { Badge, Button, Track, useToast, DoneTick, ErrorState, Skel, SkelPanel } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { segments } from "./Message";
 
@@ -17,7 +17,8 @@ export default function Send() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [scope, setScope] = useState<"unsent" | "failed" | "all">(params.get("filter") === "failed" ? "failed" : "unsent");
   const msg = useQuery({ queryKey: ["message", slug, eventId], queryFn: () => api<MessageTemplate>(`${ev(slug, eventId)}/message/`) });
-  const dash = useQuery({ queryKey: ["dashboard", slug, eventId], queryFn: () => api<Dashboard>(`${ev(slug, eventId)}/dashboard/`) });
+  // While cards are still building, keep checking so the "still being built" note clears by itself.
+  const dash = useQuery({ queryKey: ["dashboard", slug, eventId], queryFn: () => api<Dashboard>(`${ev(slug, eventId)}/dashboard/`), refetchInterval: (q) => (q.state.data && q.state.data.cards_ready < (event?.invitation_count ?? 0) ? 3000 : false) });
   const unsent = useQuery({ queryKey: ["invitations", slug, eventId, "not_sent-count"], queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?filter=not_sent&page_size=1`) });
   const progress = useQuery({ queryKey: ["send-progress", slug, eventId], queryFn: () => api<SendProgress>(`${ev(slug, eventId)}/invitations/send/progress/`), refetchInterval: phase === "sending" ? 1500 : false });
   useEffect(() => {
@@ -35,8 +36,19 @@ export default function Send() {
   const unsentCount = unsent.data?.count ?? 0;
   const count = scope === "all" ? total : scope === "failed" ? failed : unsentCount;
   const seg = msg.data ? segments(msg.data.preview) : null;
-  const blockers = [!event?.has_template && "Place the QR slot on the template first.", !msg.data && "Write the message first.", (dash.data?.cards_ready ?? 0) < total && "Some cards are still being built; wait a moment."].filter(Boolean) as string[];
+  const base = `/app/${slug}/events/${eventId}`;
+  // Each blocker says what is wrong and links to where it gets fixed.
+  const blockers = ([
+    !event?.has_template && ["Place the QR slot on the template first.", `${base}/template`, "Open the template"],
+    !msg.data && ["Write the message first.", `${base}/message`, "Write the message"],
+    total === 0 && ["Add guests first.", `${base}/guests`, "Add guests"],
+    event?.has_template && total > 0 && (dash.data?.cards_ready ?? 0) < total && ["Some cards are still being built. This page updates when they are ready.", "", ""],
+  ].filter(Boolean)) as [string, string, string][];
+  const loading = (msg.isLoading || dash.isLoading || unsent.isLoading) && phase === "idle";
+  const loadFailed = (dash.isError && !dash.data) || (unsent.isError && !unsent.data);
 
+  if (loadFailed) return <div className="panel"><ErrorState title="Sending details did not load" onRetry={() => { dash.refetch(); unsent.refetch(); msg.refetch(); }} /></div>;
+  if (loading) return <div className="split split-aside" aria-hidden><div className="stack" style={{ gap: 12 }}><Skel w={220} h={20} /><Skel h={52} r={12} /><Skel h={52} r={12} /><Skel h={52} r={12} /><Skel w={220} h={52} r={10} /></div><SkelPanel h={220} title={false} /></div>;
   if (phase !== "idle" && progress.data) {
     const p = progress.data; const done = p.total - p.counts.queued;
     return (
@@ -75,12 +87,12 @@ export default function Send() {
             </button>
           ))}
         </div>
-        {blockers.map((b) => <div key={b} className="panel" style={{ padding: 12, background: "var(--warning-subtle)", border: 0, color: "var(--warning-text)" }}>{b}</div>)}
+        {blockers.map(([b, to, label]) => <div key={b} className="panel row" style={{ padding: 12, background: "var(--warning-subtle)", border: 0, color: "var(--warning-text)", justifyContent: "space-between", gap: 12 }}><span>{b}</span>{to && <Link to={to} style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{label}</Link>}</div>)}
         <div><Button variant="primary" size="xl" disabled={count === 0 || blockers.length > 0} loading={send.isPending} onClick={() => send.mutate()}>Send {count} invitation{count === 1 ? "" : "s"}</Button></div>
       </div>
       <div className="panel panel-pad stack">
         <div className="kicker">Cost estimate</div>
-        <div className="mono" style={{ fontSize: 28, fontWeight: 500 }}>{seg ? seg.segments * count : "–"} SMS</div>
+        <div className="mono" style={{ fontSize: 28, fontWeight: 500 }}>{seg ? `${seg.segments * count} SMS` : "No message yet"}</div>
         <div className="quiet" style={{ fontSize: 13 }}>{seg ? `${seg.segments} per guest × ${count} guests. ${seg.characters} characters, ${seg.encoding}.` : "Write the message to see the cost."}</div>
         <div className="hairline" />
         <div className="kicker">Message</div>

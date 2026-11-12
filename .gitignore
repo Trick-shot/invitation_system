@@ -12,3 +12,5 @@ __pycache__/
 frontend/dist/
 .cache/
 .release
+frontend/dist-next/
+frontend/dist-prev/

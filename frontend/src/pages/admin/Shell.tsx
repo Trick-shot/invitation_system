@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { api, ws } from "../../api/client";
 import type { Event } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
-import { Avatar, Button, CardStack, CardThumb, Logo, PageTransition } from "../../components/ui";
+import { Avatar, Button, CardStack, CardThumb, Logo, PageTransition, Skel, SkelPanel } from "../../components/ui";
+import { whenIdle } from "../../lazy";
+import { EventLayout, Overview } from "../../pages";
 import "./admin.css";
 
 export const Icon = {
@@ -40,13 +42,16 @@ export default function Shell() {
   const nav = useNavigate();
   const { eventId } = useParams();
   const events = useQuery({ queryKey: ["events", slug], queryFn: () => api<{ results: Event[] }>(`${ws(slug)}/events/?page_size=100`), enabled: !!workspace });
+  // Hooks first, redirects after: React needs the same hooks on every render.
+  const { pathname } = useLocation();
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => { setDrawer(false); }, [pathname]);
+  // Opening an event is the next likely click; fetch its code while the list is read.
+  useEffect(() => { whenIdle(() => { EventLayout.preload(); Overview.preload(); }); }, []);
   if (!me) return <Navigate to="/sign-in" replace />;
   if (!workspace) return <Navigate to="/" replace />;
   if (role === "door_staff") return <Navigate to="/scan" replace />;
   const current = eventId ? events.data?.results.find((e) => String(e.id) === eventId) : undefined;
-  const { pathname } = useLocation();
-  const [drawer, setDrawer] = useState(false);
-  useEffect(() => { setDrawer(false); }, [pathname]);
   const season = events.data ? `${events.data.results.length} event${events.data.results.length === 1 ? "" : "s"} this season` : "";
 
   return (
@@ -57,7 +62,7 @@ export default function Shell() {
         <div className="brand"><Logo /><span>{workspace.name}<small>Workspace</small></span></div>
         <button className="switcher" onClick={() => nav(`/app/${slug}`)} title="All events">
           {current ? <CardThumb width={24} /> : <CardStack />}
-          <span className="grow"><span className="t" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current ? current.name : "All events"}</span><span className="s">{current ? `${current.invitation_count} invitations` : season || "No events yet"}</span></span>
+          <span className="grow"><span className="t" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current ? current.name : "All events"}</span><span className="s">{current ? `${current.invitation_count} invitations` : events.isLoading ? "Loading events" : season || "No events yet"}</span></span>
           <span className="quiet">{Icon.updown}</span>
         </button>
         <nav className="nav">
@@ -72,15 +77,36 @@ export default function Shell() {
         </div>
       </aside>
       <div className="main">
-        <PageTransition depth={4}><Outlet context={{ events: events.data?.results ?? [], refetchEvents: events.refetch, openMenu: () => setDrawer(true) }} /></PageTransition>
+        <Suspense fallback={<ContentSkeleton />}>
+          <PageTransition depth={4}><Outlet context={{ events: events.data?.results ?? [], eventsQuery: events, refetchEvents: events.refetch, openMenu: () => setDrawer(true) }} /></PageTransition>
+        </Suspense>
       </div>
     </div>
   );
 }
 
-export function Topbar({ crumbs, right, searchPlaceholder, onSearch, title, sub, back }: { crumbs: (string | { to: string; label: string })[]; right?: React.ReactNode; searchPlaceholder?: string; onSearch?: (q: string) => void; title?: string; sub?: string; back?: string }) {
+/** Shown while a page's code arrives: the top bar shape and a content block, so the layout never jumps. */
+function ContentSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="topbar"><Skel w={160} h={14} /></div>
+      <div className="content"><Skel w={240} h={30} /><Skel w={180} h={14} /><SkelPanel h={260} title={false} /></div>
+    </div>
+  );
+}
+
+export function Topbar({ crumbs, right, searchPlaceholder, onSearch, onSubmit, searchValue, title, sub, back }: { crumbs: (string | { to: string; label: string })[]; right?: React.ReactNode; searchPlaceholder?: string; onSearch?: (q: string) => void; onSubmit?: (q: string) => void; searchValue?: string; title?: string; sub?: string; back?: string }) {
   const ctx = useOutletContext<{ openMenu?: () => void } | undefined>();
   const nav = useNavigate();
+  const box = useRef<HTMLInputElement>(null);
+  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  // Cmd/Ctrl K jumps to search, as the hint in the box promises.
+  useEffect(() => {
+    if (!searchPlaceholder) return;
+    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); box.current?.focus(); box.current?.select(); } };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [searchPlaceholder]);
   return (
     <div className="topbar">
       <div className="m-bar">
@@ -97,7 +123,7 @@ export function Topbar({ crumbs, right, searchPlaceholder, onSearch, title, sub,
         ))}
       </div>
       {searchPlaceholder && (
-        <label className="search">{Icon.search}<input placeholder={searchPlaceholder} onChange={(e) => onSearch?.(e.target.value)} /><span className="kbd">⌘ K</span></label>
+        <label className="search">{Icon.search}<input ref={box} type="search" placeholder={searchPlaceholder} defaultValue={searchValue} onChange={(e) => onSearch?.(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onSubmit?.((e.target as HTMLInputElement).value); if (e.key === "Escape") (e.target as HTMLInputElement).blur(); }} /><span className="kbd">{mac ? "⌘ K" : "Ctrl K"}</span></label>
       )}
       {right}
       <UserMenu />

@@ -1,79 +1,63 @@
-import { lazy, Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router-dom";
 import { homeFor, useAuth } from "./auth/AuthProvider";
-import SignIn from "./pages/auth/SignIn";
-import SetPassword from "./pages/auth/SetPassword";
-import Shell from "./pages/admin/Shell";
-import Events from "./pages/admin/Events";
-import EventLayout from "./pages/admin/EventLayout";
-import Overview from "./pages/admin/Overview";
-import Guests from "./pages/admin/Guests";
-import Template from "./pages/admin/Template";
-import Message from "./pages/admin/Message";
-import { StaffPanel } from "./pages/admin/Staff";
-import StaffPage from "./pages/admin/Staff";
-import Send from "./pages/admin/Send";
-import ScanLog from "./pages/admin/ScanLog";
-import Settings from "./pages/admin/Settings";
+import { PageLoader } from "./components/ui/states";
+import * as P from "./pages";
 
-const Onboarding = lazy(() => import("./pages/onboarding/Onboarding"));
-const CreateAccount = lazy(() => import("./pages/auth/CreateAccount"));
-const Forgot = lazy(() => import("./pages/auth/Forgot"));
-const Scanner = lazy(() => import("./pages/scanner/Scanner"));
-const Guest = lazy(() => import("./pages/guest/Guest"));
-const Platform = lazy(() => import("./pages/platform/Platform"));
-const Lazy = ({ children }: { children: React.ReactNode }) => <Suspense fallback={<div style={{ display: "grid", placeItems: "center", height: "100%" }}><div className="spinner" /></div>}>{children}</Suspense>;
+/** Full-screen pages wait on the branded loader; it matches the boot screen, so first load never flashes blank. */
+const Page = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 
 function ErrorPage() {
   return (
-    <div className="auth-canvas"><div className="auth-card"><h1>Something went wrong</h1><p className="muted">The page hit an error. Reload to try again; if it keeps happening, tell Trickshot what you were doing.</p><div style={{ marginTop: 16 }}><button className="btn btn-primary" onClick={() => window.location.reload()}>Reload</button></div></div></div>
+    <div className="auth-canvas"><div className="auth-card"><h1>Something went wrong</h1><p className="muted">The page hit an error. Reload to try again; if it keeps happening, tell Trickshot what you were doing.</p><div className="row" style={{ marginTop: 16, gap: 8 }}><button className="btn btn-primary" onClick={() => window.location.reload()}>Reload</button><a className="btn btn-ghost" href="/">Go to the start</a></div></div></div>
   );
 }
 
 function Home() {
   const { me, loading } = useAuth();
-  if (loading) return <div style={{ display: "grid", placeItems: "center", height: "100%" }}><div className="spinner" /></div>;
+  if (loading) return <PageLoader />;
   return <Navigate to={me ? homeFor(me) : "/sign-in"} replace />;
 }
 function RequireAuth() {
   const { me, loading } = useAuth();
   const { pathname } = useLocation();
-  if (loading) return <div style={{ display: "grid", placeItems: "center", height: "100%" }}><div className="spinner" /></div>;
+  if (loading) return <PageLoader />;
   // The door team arrives at /scan; send them to their own sign-in, not the admin one.
-  return me ? <Outlet /> : <Navigate to={pathname.startsWith("/scan") ? "/staff" : "/sign-in"} replace />;
+  return me ? <Outlet /> : <Navigate to={pathname.startsWith("/scan") ? "/staff" : "/sign-in"} replace state={{ from: pathname }} />;
 }
-const NoWorkspace = () => <div className="auth-canvas"><div className="auth-card"><h1>No workspace yet</h1><p className="muted">Your account is not a member of any workspace. Ask the person who invited you to send a new link.</p></div></div>;
+function NoWorkspace() {
+  const { signOut } = useAuth();
+  return <div className="auth-canvas"><div className="auth-card"><h1>No workspace yet</h1><p className="muted">Your account is not a member of any workspace. Ask the person who invited you to send a new link, or sign in with a different account.</p><div style={{ marginTop: 16 }}><button className="btn btn-secondary" onClick={signOut}>Sign out</button></div></div></div>;
+}
 
 export const router = createBrowserRouter([
   { path: "/", element: <Home />, errorElement: <ErrorPage /> },
-  { path: "/sign-in", element: <SignIn /> },
-  { path: "/staff", element: <SignIn staff /> },
-  { path: "/forgot", element: <Lazy><Forgot /></Lazy> },
-  { path: "/create-account", element: <Lazy><CreateAccount /></Lazy> },
-  { path: "/set-password/:token", element: <SetPassword /> },
-  { path: "/i/:token", element: <Lazy><Guest /></Lazy> },
+  { path: "/sign-in", element: <Page><P.SignIn /></Page>, errorElement: <ErrorPage /> },
+  { path: "/staff", element: <Page><P.SignIn staff /></Page>, errorElement: <ErrorPage /> },
+  { path: "/forgot", element: <Page><P.Forgot /></Page> },
+  { path: "/create-account", element: <Page><P.CreateAccount /></Page> },
+  { path: "/set-password/:token", element: <Page><P.SetPassword /></Page> },
+  { path: "/i/:token", element: <Page><P.Guest /></Page>, errorElement: <ErrorPage /> },
   { element: <RequireAuth />, errorElement: <ErrorPage />, children: [
     { path: "/no-workspace", element: <NoWorkspace /> },
-    { path: "/scan", element: <Lazy><Scanner /></Lazy> },
-    { path: "/platform", element: <Lazy><Platform /></Lazy> },
-    { path: "/app/:slug/onboarding/:step", element: <OnboardingWrap /> },
-    { path: "/app/:slug/onboarding/:eventId/:step", element: <OnboardingWrap /> },
-    { path: "/app/:slug", element: <Shell />, children: [
-      { index: true, element: <Events /> },
-      { path: "staff", element: <StaffPage /> },
-      { path: "settings", element: <Settings /> },
-      { path: "events/:eventId", element: <EventLayout />, children: [
-        { index: true, element: <Overview /> },
-        { path: "guests", element: <Guests /> },
-        { path: "template", element: <Template /> },
-        { path: "message", element: <Message /> },
-        { path: "staff", element: <StaffPanel /> },
-        { path: "send", element: <Send /> },
-        { path: "scans", element: <ScanLog /> },
+    { path: "/scan", element: <Page><P.Scanner /></Page> },
+    { path: "/platform", element: <Page><P.Platform /></Page> },
+    { path: "/app/:slug/onboarding/:step", element: <Page><P.Onboarding /></Page> },
+    { path: "/app/:slug/onboarding/:eventId/:step", element: <Page><P.Onboarding /></Page> },
+    { path: "/app/:slug", element: <Page><P.Shell /></Page>, children: [
+      { index: true, element: <P.Events /> },
+      { path: "staff", element: <P.StaffPage /> },
+      { path: "settings", element: <P.Settings /> },
+      { path: "events/:eventId", element: <P.EventLayout />, children: [
+        { index: true, element: <P.Overview /> },
+        { path: "guests", element: <P.Guests /> },
+        { path: "template", element: <P.Template /> },
+        { path: "message", element: <P.Message /> },
+        { path: "staff", element: <P.StaffPanel /> },
+        { path: "send", element: <P.Send /> },
+        { path: "scans", element: <P.ScanLog /> },
       ] },
     ] },
   ] },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
-
-function OnboardingWrap() { return <Lazy><Onboarding /></Lazy>; }

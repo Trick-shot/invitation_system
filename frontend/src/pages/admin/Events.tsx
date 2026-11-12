@@ -3,23 +3,28 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { api, ApiError, ws } from "../../api/client";
 import type { Event, EventKind } from "../../api/types";
-import { Badge, Button, Chip, Empty, Field, Input, Modal, Track, fmtDate, useToast, CountUp, useIsPhone } from "../../components/ui";
+import { Badge, Button, Chip, Empty, ErrorState, Field, Input, Modal, Skel, Track, fmtDate, useToast, CountUp, useIsPhone } from "../../components/ui";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Topbar, useWorkspace } from "./Shell";
 
 const statusBadge = (s: Event["status"]) => s === "open" ? <Badge tone="success" dot>Doors open</Badge> : s === "draft" ? <Badge dot>Draft</Badge> : <Badge dot>Closed</Badge>;
 
 export default function Events() {
   const { slug, workspace } = useWorkspace();
-  const { events } = useOutletContext<{ events: Event[] }>();
+  const { events: all, eventsQuery } = useOutletContext<{ events: Event[]; eventsQuery: UseQueryResult<{ results: Event[] }> }>();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const [find, setFind] = useState("");
+  const needle = find.trim().toLowerCase();
+  const events = needle ? all.filter((e) => `${e.name} ${e.venue}`.toLowerCase().includes(needle)) : all;
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(`banner:${slug}`) === "1");
   const groups = [["Happening now", events.filter((e) => e.status === "open")], ["Coming up", events.filter((e) => e.status === "draft")], ["Finished", events.filter((e) => e.status === "closed")]] as const;
-  const needsSetup = events.some((e) => !e.has_template);
+  const needsSetup = all.some((e) => !e.has_template);
+  const loading = !eventsQuery?.data && !eventsQuery?.isError;
 
   return (
     <>
-      <Topbar crumbs={["Events"]} searchPlaceholder="Search events" />
+      <Topbar crumbs={["Events"]} searchPlaceholder="Search events" onSearch={setFind} />
       <div className="content">
         <div className="page-head"><div><h1>Events</h1><p className="muted">{workspace?.name} workspace</p></div><Button variant="primary" onClick={() => setOpen(true)}>New event</Button></div>
         {events.length > 0 && needsSetup && !dismissed && (
@@ -28,13 +33,19 @@ export default function Events() {
             <div className="row" style={{ gap: 8 }}><Button onClick={() => { const e = events.find((x) => !x.has_template); if (e) nav(`/app/${slug}/events/${e.id}/template`); }}>Finish setup</Button><Button variant="ghost" onClick={() => { localStorage.setItem(`banner:${slug}`, "1"); setDismissed(true); }}>Dismiss</Button></div>
           </div>
         )}
-        {events.length === 0 ? (
+        {loading ? (
+          <section className="stack" aria-hidden><Skel w={110} h={12} />{[0, 1].map((i) => <div key={i} className="event-card" style={{ cursor: "default" }}><Skel w="40%" h={20} /><Skel w="28%" h={13} style={{ marginTop: 8 }} /><div className="nums">{[0, 1, 2].map((j) => <div key={j}><Skel w={80} h={11} /><Skel w={48} h={26} style={{ marginTop: 8 }} /></div>)}</div><Skel h={6} r={3} /></div>)}</section>
+        ) : eventsQuery?.isError ? (
+          <div className="panel"><ErrorState title="Your events did not load" onRetry={() => eventsQuery.refetch()} /></div>
+        ) : needle && events.length === 0 ? (
+          <div className="panel"><div className="empty" style={{ padding: 32 }}><h3>No events match "{find}"</h3><p>Search looks at event names and venues.</p></div></div>
+        ) : events.length === 0 ? (
           <div className="panel"><Empty illustration="empty-box" title="No events yet" action={<Button variant="primary" onClick={() => setOpen(true)}>Create your first event</Button>}>An event holds a card template, a guest list and a message. Create one and we will walk you through the rest.</Empty></div>
         ) : groups.map(([label, list]) => list.length > 0 && (
           <section key={label} className="stack">
             <div className="kicker">{label}</div>
             {list.map((e) => (
-              <div key={e.id} className="event-card" onClick={() => nav(`/app/${slug}/events/${e.id}`)}>
+              <div key={e.id} className="event-card" role="link" tabIndex={0} onClick={() => nav(`/app/${slug}/events/${e.id}`)} onKeyDown={(k) => { if (k.key === "Enter") nav(`/app/${slug}/events/${e.id}`); }}>
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div><h3>{e.name}</h3><div className="muted">{fmtDate(e.date)}{e.venue ? `, ${e.venue}` : ""}</div></div>
                   {statusBadge(e.status)}

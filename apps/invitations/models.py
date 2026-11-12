@@ -17,7 +17,8 @@ def make_token() -> str:
 
 
 def card_upload_path(instance, filename):
-    return f"ws/{instance.workspace.slug}/events/{instance.event_id}/cards/{instance.token}.png"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"ws/{instance.workspace.slug}/events/{instance.event_id}/cards/{instance.token}.{ext}"
 
 
 class Invitation(WorkspaceOwnedModel):

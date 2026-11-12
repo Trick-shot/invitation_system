@@ -7,9 +7,11 @@ export interface Me { id: number; email: string; full_name: string; phone: strin
 
 export type EventStatus = "draft" | "open" | "closed";
 export type EventKind = "wedding" | "communion" | "graduation" | "other";
+export type GuestBand = "under_100" | "100_300" | "300_1000" | "over_1000";
 export interface Event {
   id: number; name: string; kind: EventKind; date: string; start_time: string | null; venue: string; status: EventStatus;
   invitation_count: number; people_expected: number; people_arrived: number; has_template: boolean; has_message: boolean; created_at: string; updated_at: string;
+  guests_estimate_band: GuestBand | ""; guests_estimate: number | null;
 }
 export interface CardTemplate { id: number; image: string; width: number; height: number; slot_x: number; slot_y: number; slot_size: number; updated_at: string }
 export interface MessageTemplate { id: number; channel: "sms" | "whatsapp"; language: string; body: string; segments: { characters: number; segments: number; encoding: string }; preview: string; welcome_enabled: boolean; welcome_body: string; welcome_segments: { characters: number; segments: number; encoding: string }; welcome_preview: string; updated_at: string }
@@ -52,6 +54,6 @@ export interface Verdict { result: ScanResult; guest_name: string; capacity: num
 export interface ScanEvent { id: number; name: string; date: string; venue: string; status: EventStatus; workspace: string }
 export interface ScanSearchRow { id: number; name: string; phone: string; capacity: number; admitted_count: number }
 
-export interface PublicInvitation { state: "ready" | "preparing" | "finished" | "invalid"; guest_name?: string; capacity?: number; event?: { name: string; date: string; start_time: string | null; venue: string }; card_url?: string | null }
+export interface PublicInvitation { state: "ready" | "preparing" | "finished" | "invalid"; guest_name?: string; capacity?: number; admitted_count?: number; entries?: string[]; event?: { name: string; date: string; start_time: string | null; venue: string; status?: string }; card_url?: string | null }
 
 export interface PlatformWorkspace { id: number; name: string; slug: string; status: string; default_country: string; default_language: string; created_at: string; members: number; events: number; events_open: number; messages_this_month: number; setup: "invite_not_accepted" | "no_events" | "complete" }

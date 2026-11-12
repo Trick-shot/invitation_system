@@ -36,7 +36,7 @@ def test_create_invitation_normalises_and_generates_card(api_a, ws_a, event_a):
     with Image.open(inv.card.path) as im:
         assert im.size == (600, 900)
         # The QR sits at the slot: a dark module should exist inside it, none at the top-left corner.
-        assert im.getpixel((5, 5)) == (250, 248, 244)
+        assert all(abs(a - b) <= 2 for a, b in zip(im.getpixel((5, 5)), (250, 248, 244)))  # JPEG: near, not exact
         x, y, size = event_a.template.slot_pixels()
         assert any(im.getpixel((x + i, y + size // 2)) == (17, 17, 17) for i in range(size))
 
@@ -174,7 +174,7 @@ def test_public_link_states(ws_a, event_a, inv_a):
     c = APIClient()
     assert c.get("/api/i/does-not-exist/").status_code == 404
     r = c.get(f"/api/i/{inv_a.token}/")
-    assert r.status_code == 200 and r.data["state"] == "ready" and r.data["card_url"].endswith(".png")
+    assert r.status_code == 200 and r.data["state"] == "ready" and ".jpg?v=" in r.data["card_url"] and r.data["card_url"].startswith("/media/")
     assert "workspace" not in r.data
     c.get(f"/api/i/{inv_a.token}/")
     with workspace_context(ws_a):

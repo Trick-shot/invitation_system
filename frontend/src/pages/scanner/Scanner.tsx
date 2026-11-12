@@ -30,6 +30,8 @@ export default function Scanner() {
         <div className="sc-head"><div><div className="ev">Which event are you scanning for?</div><div className="gate">{me.full_name || me.email}</div></div><button className="btn btn-ghost btn-sm" onClick={signOut}>Sign out</button></div>
         <div className="events-list">
           {events.data?.map((e) => <button key={e.id} type="button" className="choice" onClick={() => { localStorage.setItem("ti.scan.event", String(e.id)); setEventId(e.id); }}><span className="title" style={{ fontSize: 18 }}>{e.name}</span><span className="desc">{fmtDate(e.date)}{e.venue ? `, ${e.venue}` : ""} · {e.workspace}</span>{e.status !== "open" && <span className="badge badge-warning">Doors not open yet</span>}</button>)}
+          {events.isLoading && [0, 1].map((i) => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 14, opacity: .25 }} aria-hidden />)}
+          {events.isError && !events.data && <div className="empty"><h3>Could not load your events</h3><p>Check the connection, then try again.</p><Button onClick={() => events.refetch()}>Try again</Button></div>}
           {events.data?.length === 0 && <div className="empty"><Illustration name="scanner-phone" /><h3>Nothing to scan yet</h3><p>No open events in your workspaces. Ask the coordinator to open the doors.</p></div>}
           {me.memberships.some((m) => m.role !== "door_staff") && <Button variant="ghost" onClick={() => nav("/")}>Back to the admin</Button>}
         </div>

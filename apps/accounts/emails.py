@@ -26,49 +26,54 @@ def send_invite_email(*, user: User, workspace, url: str, inviter: User | None =
     who = inviter.full_name.split()[0] if inviter and inviter.full_name else workspace.name
     title = f"{who} added you as {role_label(role)}"
     if event is not None:
-        body = f"You can scan guests in at {event.name} on {event.date:%-d %B}. Set a password to get started; it takes a minute and works on your phone."
+        bullets = [f"Scan guests in at {event.name} on {event.date:%-d %B}.", "Set a password to get started."]
     else:
-        body = f"You now have access to {workspace.name} on Trickshot Invitations. Set a password to get started; it takes a minute and works on your phone."
+        bullets = [f"You now have access to {workspace.name} on Trickshot Invitations.", "Set a password to get started."]
     note = f"This link works for 7 days and only once. Your login is {user.email}."
     _send(
         user.email,
         f"{who} added you to {workspace.name}",
         "email/button.html",
         {
-            "preheader": body,
+            "preheader": " ".join(bullets),
             "kicker": workspace.name,
             "title": title,
-            "body": body,
+            "illustration": "/email/staff-badge.png" if role == "door_staff" else "",
+            "bullets": bullets,
             "cta": "Set your password",
+            "block": True,
             "url": url,
             "note": note,
             "fallback_url": url,
             "footer": f"Sent by Trickshot Invitations for {workspace.name}.",
         },
-        f"{title}\n\n{body}\n\nSet your password: {url}\n\n{note}",
+        f"{title}\n\n" + "\n".join(f"- {b}" for b in bullets) + f"\n\nSet your password: {url}\n\n{note}",
     )
 
 
 def send_reset_email(*, user: User, url: str):
     title = "Choose a new password"
-    body = f"Someone asked to reset the password for {user.email}. If that was you, pick a new one below. If not, you can ignore this email; your password stays as it is."
+    paragraphs = [
+        f"We received a request to reset the password for {user.email}. If you made this request, use the button below to choose a new password.",
+        "If you didn\u2019t request a password reset, you can safely ignore this email. Your password will stay the same.",
+    ]
     note = "This link works for 7 days and only once."
     _send(
         user.email,
         "Reset your Trickshot Invitations password",
         "email/button.html",
         {
-            "preheader": body,
+            "preheader": paragraphs[0],
             "kicker": "Trickshot Invitations",
             "title": title,
-            "body": body,
+            "paragraphs": paragraphs,
             "cta": "Choose a new password",
             "url": url,
             "note": note,
             "fallback_url": url,
             "footer": "Sent by Trickshot Invitations.",
         },
-        f"{title}\n\n{body}\n\nChoose a new password: {url}\n\n{note}",
+        f"{title}\n\n" + "\n\n".join(paragraphs) + f"\n\nChoose a new password: {url}\n\n{note}",
     )
 
 
@@ -85,11 +90,12 @@ def send_code_email(*, email: str, code: str):
             "preheader": f"Your code is {pretty}",
             "kicker": "Trickshot Invitations",
             "title": title,
-            "body": body,
+            "paragraphs": [body],
             "code": pretty,
             "note": note,
             "fallback_url": "",
             "footer": "Sent by Trickshot Invitations.",
+            "questions_footer": True,
         },
         f"{title}\n\nYour code: {code}\n\n{body}\n\n{note}",
     )

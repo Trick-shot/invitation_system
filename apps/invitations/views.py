@@ -67,6 +67,22 @@ class InvitationViewSet(WorkspaceViewSet):
         queue_card(invitation)
         return Response({"detail": "Card queued."})
 
+    @action(detail=True, methods=["get"])
+    def activity(self, request, *args, **kwargs):
+        """What the guest sheet shows: who let this guest in and when."""
+        from apps.scanning.models import ScanLog
+
+        invitation = self.get_object()
+        rows = ScanLog.objects.filter(invitation=invitation, result=ScanLog.Result.ACCEPTED).select_related("staff").order_by("created_at")
+        return Response(
+            {
+                "admissions": [
+                    {"at": r.created_at, "by": ((r.staff.full_name or "").strip() or r.staff.email) if r.staff else "", "manual": r.manual}
+                    for r in rows
+                ]
+            }
+        )
+
     @action(detail=False, methods=["get"], url_path="import/template")
     def import_template(self, request, *args, **kwargs):
         from django.http import HttpResponse
@@ -188,35 +204,56 @@ class PublicInvitationView(APIView):
     """
     The guest's link. Anyone with the token sees the card; nothing in the
     response identifies the workspace. Unknown and foreign tokens both 404.
+
+    The page polls with ?poll=1 so it can show "scanned" the moment the door
+    admits the guest. Polls do not count as views and use their own, wider
+    throttle: guests at a venue often share one carrier IP.
     """
 
     permission_classes = [AllowAny]
     authentication_classes = []
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "public_link"
+
+    @property
+    def throttle_scope(self):
+        return "public_poll" if self.request.query_params.get("poll") else "public_link"
 
     def get(self, request, token):
         from django.db.models import F
         from django.utils import timezone
 
+        from apps.scanning.models import ScanLog
+
         inv = Invitation.objects.all_workspaces().select_related("event").filter(token=token).first()
         if inv is None:
             return Response({"state": "invalid"}, status=404)
-        Invitation.objects.all_workspaces().filter(pk=inv.pk).update(view_count=F("view_count") + 1)
-        if inv.first_viewed_at is None:
-            Invitation.objects.all_workspaces().filter(pk=inv.pk, first_viewed_at__isnull=True).update(first_viewed_at=timezone.now())
+        if not request.query_params.get("poll"):
+            Invitation.objects.all_workspaces().filter(pk=inv.pk).update(view_count=F("view_count") + 1)
+            if inv.first_viewed_at is None:
+                Invitation.objects.all_workspaces().filter(pk=inv.pk, first_viewed_at__isnull=True).update(first_viewed_at=timezone.now())
         event = inv.event
         state = "ready"
         if event.status == Event.Status.CLOSED:
             state = "finished"
         elif inv.card_status != Invitation.CardStatus.READY:
             state = "preparing"
+        entries = list(
+            ScanLog.objects.all_workspaces()
+            .filter(invitation=inv, result=ScanLog.Result.ACCEPTED)
+            .order_by("created_at")
+            .values_list("created_at", flat=True)[: inv.capacity]
+        )
         return Response(
             {
                 "state": state,
                 "guest_name": inv.name,
                 "capacity": inv.capacity,
-                "event": {"name": event.name, "date": event.date, "start_time": event.start_time, "venue": event.venue},
-                "card_url": request.build_absolute_uri(inv.card.url) if state == "ready" and inv.card else None,
+                "admitted_count": inv.admitted_count,
+                "entries": entries,
+                "event": {"name": event.name, "date": event.date, "start_time": event.start_time, "venue": event.venue, "status": event.status},
+                # Relative on purpose: the page fetches it to save to Photos, and an absolute
+                # URL built behind the proxy can come out as http:// and be blocked.
+                # ?v= changes whenever the card is rebuilt, so browsers never show a stale cached card.
+                "card_url": f"{inv.card.url}?v={int(inv.updated_at.timestamp())}" if state == "ready" and inv.card else None,
             }
         )

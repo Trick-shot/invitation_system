@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ws } from "../../api/client";
 import type { Member, Paginated, Role } from "../../api/types";
-import { Avatar, Badge, Button, Empty, Field, Input, Modal, useToast, useIsPhone } from "../../components/ui";
+import { Avatar, Badge, Button, Empty, Field, Input, Modal, useToast, useIsPhone, ErrorState, SkelRows } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 const roleLabel: Record<Role, string> = { admin: "Admin", coordinator: "Coordinator", door_staff: "Door staff" };
@@ -26,7 +26,9 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
         <div><h3>{standalone ? "" : "Who can scan at the door"}</h3><p className="muted">Door staff sign in to the scanner with their own account. They never see the guest list.</p></div>
         {isAdmin && <Button variant="primary" onClick={() => setAdding(true)}>Add staff member</Button>}
       </div>
-      {members.length === 0 ? (
+      {!list.data ? (
+        list.isError ? <div className="panel"><ErrorState title="The staff list did not load" onRetry={() => list.refetch()} /></div> : <div className="panel"><SkelRows rows={3} /></div>
+      ) : members.length === 0 ? (
         <div className="panel"><Empty illustration="phone-contacts" title="No staff yet" action={isAdmin && <Button variant="primary" onClick={() => setAdding(true)}>Add the first one</Button>}>Add whoever will stand at the door. They get a link by SMS or email to set a password.</Empty></div>
       ) : (
         <div className="panel">

@@ -22,6 +22,8 @@ class EventSerializer(serializers.ModelSerializer):
             "start_time",
             "venue",
             "status",
+            "guests_estimate_band",
+            "guests_estimate",
             "invitation_count",
             "people_expected",
             "people_arrived",

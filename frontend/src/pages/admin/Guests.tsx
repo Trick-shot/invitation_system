@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, Field, Input, Modal, Track, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, ErrorState, Field, Input, Modal, SkelRows, Track, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
+import { GuestSheet } from "./GuestSheet";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
 
@@ -13,20 +14,22 @@ export default function Guests() {
   const { slug, eventId, refetch } = useEvent();
   const [params, setParams] = useSearchParams();
   const filter = (params.get("filter") ?? "") as Filter;
-  const [q, setQ] = useState("");
+  // Search lives in the URL too, so the top bar search ("?q=") and a shared link land here filtered.
+  const [q, setQ0] = useState(() => params.get("q") ?? "");
+  const urlQ = params.get("q") ?? "";
+  useEffect(() => { setQ0(urlQ); }, [urlQ]);
+  const setQ = (v: string) => { setQ0(v); };
   const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const navigate = useNavigate();
-  const [removing, setRemoving] = useState<Invitation | null>(null);
+  const [open, setOpen] = useState<Invitation | null>(null);
   const qc = useQueryClient();
-  const toast = useToast();
   const key = ["invitations", slug, eventId, filter, q, page];
   const list = useQuery({ queryKey: key, queryFn: () => api<Paginated<Invitation>>(`${ev(slug, eventId)}/invitations/?page=${page}&page_size=50&filter=${filter}&q=${encodeURIComponent(q)}`) });
   const hasPending = list.data?.results.some((g) => g.card_status === "pending" || g.card_status === "generating");
   useEffect(() => { if (!hasPending) return; const t = setInterval(() => list.refetch(), 3000); return () => clearInterval(t); }, [hasPending, list]);
   const invalidate = () => { qc.invalidateQueries({ queryKey: ["invitations", slug, eventId] }); qc.invalidateQueries({ queryKey: ["dashboard", slug, eventId] }); refetch(); };
-  const remove = useMutation({ mutationFn: (g: Invitation) => api(`${ev(slug, eventId)}/invitations/${g.id}/`, { method: "DELETE" }), onSuccess: () => { setRemoving(null); invalidate(); toast("Guest removed"); } });
   const total = list.data?.count ?? 0;
   const empty = !list.isLoading && total === 0 && !q && !filter;
 
@@ -45,12 +48,12 @@ export default function Guests() {
         <div className="panel"><Empty illustration="address-book" title="No guests yet" action={<div className="row"><Button onClick={() => setImporting(true)}>Import a list</Button><Button variant="primary" onClick={() => setAdding(true)}>Add one by hand</Button></div>}>Bring them in from your phone, a pasted list, or a file. We check every number before anything is sent.</Empty></div>
       ) : (
         <div className="panel">
-          {list.isLoading && <div className="panel-pad" style={{ display: "grid", placeItems: "center", padding: 40 }}><Loader label="Loading guests" /></div>}
-          {list.isError && <div className="empty" style={{ padding: 32 }}><h3>Could not load the guest list</h3><p>Check your connection and try again.</p><div style={{ marginTop: 8 }}><Button onClick={() => list.refetch()}>Try again</Button></div></div>}
+          {list.isLoading && <SkelRows rows={8} />}
+          {list.isError && !list.data && <ErrorState title="The guest list did not load" onRetry={() => list.refetch()} />}
           {list.isSuccess && total === 0 && <div className="empty" style={{ padding: 32 }}><h3>No guests match</h3><p>{q ? `Nothing found for "${q}".` : "Nobody is in this group yet."}</p><div style={{ marginTop: 8 }}><Button variant="ghost" onClick={() => { setQ(""); setParams({}); }}>Show everyone</Button></div></div>}
           <div className="m-list">
             {(list.data?.results ?? []).map((g) => (
-              <div key={g.id} className="m-guest" onClick={() => setRemoving(g)} role="button">
+              <div key={g.id} className="m-guest" onClick={() => setOpen(g)} role="button" tabIndex={0}>
                 <Avatar initials={g.initials} />
                 <div className="grow" style={{ minWidth: 0 }}><div className="m-name">{g.name}</div><div className="num quiet" style={{ fontSize: 13 }}>{g.phone_display}</div></div>
                 <div className="stack" style={{ gap: 6, alignItems: "flex-end" }}>
@@ -64,14 +67,14 @@ export default function Guests() {
             <thead><tr><th>Guest</th><th>Phone</th><th>Admits</th><th>Card</th><th>Delivery</th><th>Arrivals</th><th /></tr></thead>
             <tbody>
               {(list.data?.results ?? []).map((g) => (
-                <tr key={g.id}>
+                <tr key={g.id} className="clickable" onClick={() => setOpen(g)}>
                   <td><div className="row"><Avatar initials={g.initials} /><span>{g.name}</span></div></td>
                   <td className="num">{g.phone_display}</td>
                   <td className="num">{g.capacity}</td>
-                  <td>{g.card_status === "ready" ? <a href={g.card ?? "#"} target="_blank" rel="noreferrer">Ready</a> : g.card_status === "failed" ? <span style={{ color: "var(--danger-text)" }} title={g.card_error}>Failed</span> : <span className="quiet">Building…</span>}</td>
+                  <td>{g.card_status === "ready" ? <a href={`/i/${g.token}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>Ready</a> : g.card_status === "failed" ? <span style={{ color: "var(--danger-text)" }} title={g.card_error}>Failed</span> : <span className="quiet">Building…</span>}</td>
                   <td>{g.last_delivery ? <Badge tone={g.last_delivery.status === "failed" ? "danger" : g.last_delivery.status === "delivered" ? "success" : "neutral"} dot>{{ queued: "Queued", sent: "Sent", delivered: "Delivered", failed: "Failed" }[g.last_delivery.status]}{g.last_delivery.sequence > 1 ? ` ×${g.last_delivery.sequence}` : ""}</Badge> : <Badge dot>Not sent</Badge>}</td>
                   <td><div className="row" style={{ gap: 10 }}><div style={{ width: 48 }}><Track value={g.admitted_count} max={g.capacity} tone={g.admitted_count === g.capacity ? "ok" : undefined} /></div><span className="mono" style={{ color: g.admitted_count === g.capacity ? "var(--success-text)" : undefined }}>{g.admitted_count} of {g.capacity}</span></div></td>
-                  <td style={{ textAlign: "right" }}><button className="btn btn-ghost btn-sm" onClick={() => setRemoving(g)}>Remove</button></td>
+                  <td style={{ textAlign: "right" }}><button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); setOpen(g); }}>Details</button></td>
                 </tr>
               ))}
             </tbody>
@@ -81,8 +84,7 @@ export default function Guests() {
       )}
       <AddGuestModal open={adding} onClose={() => setAdding(false)} onAdded={invalidate} />
       <ImportModal open={importing} onClose={() => setImporting(false)} onDone={invalidate} onNext={() => navigate("../send")} />
-      <Modal open={!!removing} onClose={() => setRemoving(null)} title={`Remove ${removing?.name}?`} sub="Their card and any link already sent will stop working. The number is freed for a new invitation."
-        actions={<><Button variant="ghost" onClick={() => setRemoving(null)}>Keep</Button><Button variant="danger" loading={remove.isPending} onClick={() => removing && remove.mutate(removing)}>Remove guest</Button></>} />
+      <GuestSheet slug={slug} eventId={eventId} guest={open} onClose={() => setOpen(null)} onChanged={invalidate} />
     </>
   );
 }

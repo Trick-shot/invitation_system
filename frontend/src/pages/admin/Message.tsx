@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { MessageTemplate } from "../../api/types";
-import { Button, Field, useToast } from "../../components/ui";
+import { Button, Field, useToast, ErrorState, Skel } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { useWorkspace } from "./Shell";
 
@@ -36,6 +36,9 @@ export default function Message() {
   const sender = (workspace?.name ?? "Trickshot").split(" ")[0].toUpperCase().slice(0, 11);
   const now = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   const linkify = (t: string) => t.split(/(trickshot\.tech\/i\/\w+)/g).map((part, i) => /^trickshot\.tech\/i\//.test(part) ? <span key={i} className="sms-link">{part}</span> : part);
+  if (!q.data) return q.isError
+    ? <div className="panel"><ErrorState title="The message did not load" onRetry={() => q.refetch()} /></div>
+    : <div className="split" aria-hidden><div className="stack"><Skel w={200} h={18} /><Skel h={180} r={8} /><Skel w={260} h={12} /><Skel h={120} r={8} /></div><Skel h={420} r={28} /></div>;
   return (
     <div className="msg-layout">
       <div className="panel panel-pad stack msg-side" style={{ gap: 14 }}>

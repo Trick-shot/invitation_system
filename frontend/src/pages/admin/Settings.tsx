@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ApiError, ws } from "../../api/client";
 import type { WorkspaceSettings } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
-import { Button, Field, Input, Modal, useToast } from "../../components/ui";
+import { Button, Field, Input, Modal, useToast, ErrorState, Skel, SkelPanel } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 export default function Settings() {
@@ -22,6 +22,7 @@ export default function Settings() {
   const logo = useMutation({ mutationFn: (f: File) => { const fd = new FormData(); fd.append("logo", f); return api(`${ws(slug)}/settings/`, { method: "PATCH", form: fd }); }, onSuccess: () => { q.refetch(); refresh(); toast("Logo updated"); } });
   const exportAll = async () => { const data = await api(`${ws(slug)}/export/`); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); a.download = `${slug}-export.json`; a.click(); };
 
+  if (role === "admin" && !q.data) return (<><Topbar crumbs={["Settings"]} /><div className="content">{q.isError ? <div className="panel"><ErrorState title="Settings did not load" onRetry={() => q.refetch()} /></div> : <div className="stack" aria-hidden><Skel w={200} h={30} /><SkelPanel h={180} /><SkelPanel h={120} /></div>}</div></>);
   if (role !== "admin") return (<><Topbar crumbs={["Settings"]} /><div className="content"><h1>Settings</h1><p className="muted">Only an admin can change workspace settings.</p></div></>);
   return (
     <>

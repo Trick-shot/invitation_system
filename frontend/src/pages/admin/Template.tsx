@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ev } from "../../api/client";
 import type { CardTemplate, Invitation, Paginated } from "../../api/types";
-import { Button, Modal, useToast } from "../../components/ui";
+import { Button, ErrorState, Modal, WholeImage, useToast } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 
 const QR = () => <svg viewBox="0 0 7 7" width="60%" height="60%" fill="var(--text-primary)"><path d="M0 0h3v3H0zM1 1h1v1H1zM4 0h3v3H4zM5 1h1v1H5zM0 4h3v3H0zM1 5h1v1H1zM4 4h1v1H4zM6 4h1v1H6zM5 5h1v1H5zM4 6h1v1H4zM6 6h1v1H6z" /></svg>;
@@ -60,7 +60,8 @@ export default function Template() {
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, [q.data]);
 
-  if (q.isLoading) return <div className="skeleton" style={{ height: 320 }} />;
+  if (q.isLoading) return <div className="template-editor" aria-hidden><div className="skeleton" style={{ aspectRatio: "3 / 4", maxWidth: 420, width: "100%" }} /><div className="skeleton" style={{ height: 220 }} /></div>;
+  if (q.isError) return <div className="panel"><ErrorState title="The card template did not load" onRetry={() => q.refetch()} /></div>;
   const t = q.data;
   const ar = t ? t.width / t.height : 1;
   const px = t ? Math.round(t.width * slot.size) : 0;
@@ -70,7 +71,7 @@ export default function Template() {
       <div className="stack">
         {t ? (
           <div ref={wrap} className="canvas-wrap" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
-            <img src={t.image} alt="Card template" draggable={false} />
+            <WholeImage src={t.image} alt="Card template" ratio={ar} draggable={false} label="Loading your card design" />
             <div className="slot" style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.size * 100}%`, height: `${slot.size * ar * 100}%` }} onPointerDown={onDown("move")}>
               <QR /><span className="handle" onPointerDown={onDown("resize")} />
             </div>
@@ -104,7 +105,7 @@ export default function Template() {
         <ul className="muted" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.8 }}><li>Every guest's card is rebuilt with the new image.</li><li>Cards already downloaded by guests keep the old design until they open their link again.</li><li>The QR slot position is kept, so check it still sits where you want.</li></ul>
       </Modal>
       <Modal open={!!previewUrl} onClose={() => setPreviewUrl(null)} title="A real card" sub="Scan this with your phone's camera. It should open the guest page.">
-        {previewUrl && <img src={previewUrl} alt="Rendered card" style={{ borderRadius: 8, border: "1px solid var(--border-default)" }} />}
+        {previewUrl && <WholeImage src={previewUrl} alt="Rendered card" label="Loading the card" style={{ borderRadius: 8, border: "1px solid var(--border-default)", minHeight: 240 }} />}
       </Modal>
     </div>
   );

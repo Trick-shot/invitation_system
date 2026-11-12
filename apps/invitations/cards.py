@@ -34,7 +34,10 @@ def render_card(template: CardTemplate, invitation: Invitation) -> bytes:
         code = code.convert("RGB").resize((size, size), Image.NEAREST)
         canvas.paste(code, (x, y))
         out = io.BytesIO()
-        canvas.save(out, format="PNG", optimize=True)
+        # JPEG, not PNG: a photo-like card is 4 to 8 times smaller, so it opens fast on a
+        # phone and every gallery app treats it as a photo. Quality 90 with full colour
+        # resolution (subsampling 0) keeps the QR modules crisp enough to scan.
+        canvas.save(out, format="JPEG", quality=90, subsampling=0, optimize=True, progressive=False)
         return out.getvalue()
 
 
@@ -53,14 +56,14 @@ def generate_card(invitation_id: int, workspace_id: int):
             return "no-template"
         Invitation.objects.filter(pk=invitation.pk).update(card_status=Invitation.CardStatus.GENERATING)
         try:
-            png = render_card(template, invitation)
+            image = render_card(template, invitation)
         except Exception as exc:
             log.exception("Card render failed for invitation %s", invitation_id)
             Invitation.objects.filter(pk=invitation.pk).update(card_status=Invitation.CardStatus.FAILED, card_error=str(exc)[:200])
             return "failed"
         if invitation.card:
             invitation.card.delete(save=False)
-        invitation.card.save(f"{invitation.token}.png", ContentFile(png), save=False)
+        invitation.card.save(f"{invitation.token}.jpg", ContentFile(image), save=False)
         invitation.card_status = Invitation.CardStatus.READY
         invitation.card_error = ""
         invitation.save(update_fields=["card", "card_status", "card_error", "updated_at"])

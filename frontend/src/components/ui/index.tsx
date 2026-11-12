@@ -1,7 +1,8 @@
 export { PageTransition, CountUp, Stagger, Rise, riseIn, EASE } from "./motion";
 export { Loader } from "./Loader";
 export { DoneTick } from "./DoneTick";
-import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+export { PageLoader, ErrorState, Skel, SkelStats, SkelRows, SkelPanel, Async, WholeImage } from "./states";
+import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CountUp, riseIn, EASE } from "./motion";
 import { MAX_CAPACITY } from "../../api/types";
@@ -181,28 +182,7 @@ export function Illustration({ name, size = 110 }: { name: string; size?: number
   return <img src={`/illustrations/${name}.png`} alt="" width={size} height={size} style={{ objectFit: "contain", mixBlendMode: dark ? "screen" : "multiply" }} onError={() => setOk(false)} />;
 }
 
-/* ---------- Toasts ---------- */
-interface Toast { id: number; text: string; err?: boolean }
-const ToastCtx = createContext<(text: string, err?: boolean) => void>(() => {});
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const [list, setList] = useState<Toast[]>([]);
-  const push = useCallback((text: string, err?: boolean) => {
-    const id = Date.now() + Math.random();
-    setList((l) => [...l, { id, text, err }]);
-    setTimeout(() => setList((l) => l.filter((t) => t.id !== id)), 3500);
-  }, []);
-  return (
-    <ToastCtx.Provider value={push}>
-      {children}
-      <div className="toasts">
-        <AnimatePresence>
-          {list.map((t) => <motion.div key={t.id} className={`toast ${t.err ? "err" : ""}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{t.text}</motion.div>)}
-        </AnimatePresence>
-      </div>
-    </ToastCtx.Provider>
-  );
-}
-export const useToast = () => useContext(ToastCtx);
+export { ToastProvider, useToast } from "./toast";
 
 /* ---------- helpers ---------- */
 export const fmtDate = (iso: string, short = false) => new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-GB", short ? { day: "numeric", month: "short" } : { day: "numeric", month: "long", year: "numeric" });
