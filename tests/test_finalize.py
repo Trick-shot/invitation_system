@@ -71,3 +71,28 @@ def test_dashboard_after_scans_buckets_arrivals_by_hour(api_a, staff_a, ws_a, ev
     assert r.status_code == 200
     assert sum(b["count"] for b in r.data["arrivals_by_hour"]) == 1
     assert r.data["arrivals_by_hour"][0]["hour"].endswith(":00:00+03:00")
+
+
+def test_staff_invite_survives_a_rejected_sms_and_still_emails(api_a, ws_a, monkeypatch, mailoutbox, django_capture_on_commit_callbacks):
+    """Regression: Beem rejecting the SMS used to 500 the request and skip the email."""
+    from apps.messaging.providers import ProviderError
+
+    def boom(**kw):
+        raise ProviderError("Invalid phone number [114]")
+
+    monkeypatch.setattr("apps.messaging.service.send_transactional_sms", boom)
+    with django_capture_on_commit_callbacks(execute=True):
+        r = api_a.post(f"/api/workspaces/{ws_a.slug}/members/", {"email": "door@x.co", "phone": "0712 345 678", "role": "door_staff"}, format="json")
+    assert r.status_code == 201, r.data
+    assert r.data["delivery"]["email"] == "sent" and r.data["delivery"]["sms"].startswith("failed")
+    assert len(mailoutbox) == 1
+
+
+def test_staff_phone_is_normalised_and_bad_numbers_are_a_field_error(api_a, ws_a):
+    from apps.accounts.models import User
+
+    r = api_a.post(f"/api/workspaces/{ws_a.slug}/members/", {"email": "door2@x.co", "phone": "0712 345 678", "role": "door_staff"}, format="json")
+    assert r.status_code == 201
+    assert User.objects.get(email="door2@x.co").phone == "+255712345678"
+    bad = api_a.post(f"/api/workspaces/{ws_a.slug}/members/", {"email": "door3@x.co", "phone": "12345", "role": "door_staff"}, format="json")
+    assert bad.status_code == 400 and "phone" in bad.data

@@ -13,8 +13,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const push = useCallback((text: string, err?: boolean) => {
     const id = Date.now() + Math.random();
     setList((l) => [...l, { id, text, err }]);
-    setTimeout(() => setList((l) => l.map((t) => (t.id === id ? { ...t, leaving: true } : t))), 3300);
-    setTimeout(() => setList((l) => l.filter((t) => t.id !== id)), 3550);
+    // Problems stay up longer: they usually carry a reason worth reading.
+    const ms = err ? 7000 : 3300;
+    setTimeout(() => setList((l) => l.map((t) => (t.id === id ? { ...t, leaving: true } : t))), ms);
+    setTimeout(() => setList((l) => l.filter((t) => t.id !== id)), ms + 250);
   }, []);
   return (
     <ToastCtx.Provider value={push}>

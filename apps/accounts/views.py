@@ -163,9 +163,21 @@ class MemberViewSet(WorkspaceScopedMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         ser = InviteMemberSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        invite = invite_member(workspace=self.workspace, invited_by=request.user, **ser.validated_data)
+        data = dict(ser.validated_data)
+        if data.get("phone"):
+            # Same rule as guest numbers: 0712 345 678 becomes +255712345678. The SMS
+            # provider rejects anything else, which used to break the whole invite.
+            from rest_framework.exceptions import ValidationError
+
+            from apps.invitations.phones import PhoneError, normalise
+
+            try:
+                data["phone"] = normalise(data["phone"], self.workspace.default_country or "TZ")
+            except PhoneError as exc:
+                raise ValidationError({"phone": [f"{exc}. Use a number like 0712 345 678 or +255 712 345 678."]})
+        invite = invite_member(workspace=self.workspace, invited_by=request.user, **data)
         membership = Membership.objects.get(user=invite.user, workspace=self.workspace)
-        return Response(MemberSerializer(membership).data, status=status.HTTP_201_CREATED)
+        return Response({**MemberSerializer(membership).data, "delivery": getattr(invite, "delivery", {})}, status=status.HTTP_201_CREATED)
 
     def perform_destroy(self, instance):
         if instance.user_id == self.request.user.id:
@@ -183,4 +195,4 @@ class MemberViewSet(WorkspaceScopedMixin, viewsets.ModelViewSet):
             role=membership.role,
             invited_by=request.user,
         )
-        return Response({"detail": "Invite sent.", "expires_at": invite.expires_at})
+        return Response({"detail": "Invite sent.", "expires_at": invite.expires_at, "delivery": getattr(invite, "delivery", {})})

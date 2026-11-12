@@ -17,7 +17,7 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
   const list = useQuery({ queryKey: ["members", slug], queryFn: () => api<Paginated<Member>>(`${ws(slug)}/members/?page_size=100`) });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["members", slug] });
   const remove = useMutation({ mutationFn: (m: Member) => api(`${ws(slug)}/members/${m.id}/`, { method: "DELETE" }), onSuccess: () => { setRemoving(null); invalidate(); toast("Member removed"); }, onError: (e) => toast((e as ApiError).summary, true) });
-  const resend = useMutation({ mutationFn: (m: Member) => api(`${ws(slug)}/members/${m.id}/resend-invite/`, { method: "POST" }), onSuccess: () => toast("Invite sent again") });
+  const resend = useMutation({ mutationFn: (m: Member) => api<{ delivery?: Delivery }>(`${ws(slug)}/members/${m.id}/resend-invite/`, { method: "POST" }), onSuccess: (r, m) => { const [msg, bad] = deliveryNote(m.full_name || m.email, r.delivery); toast(msg, bad); } });
   const members = list.data?.results ?? [];
   const isAdmin = role === "admin";
   return (
@@ -62,8 +62,8 @@ export function AddMemberModal({ open, onClose, onAdded, defaultRole = "door_sta
   const [form, setForm] = useState({ full_name: "", email: "", phone: "", role: defaultRole as Role });
   const [err, setErr] = useState<ApiError | null>(null);
   const m = useMutation({
-    mutationFn: () => api<Member>(`${ws(slug)}/members/`, { method: "POST", body: form }),
-    onSuccess: (mem) => { toast(`Invite sent to ${mem.full_name || mem.email}`); setForm({ full_name: "", email: "", phone: "", role: defaultRole }); onAdded(); onClose(); },
+    mutationFn: () => api<Member & { delivery?: Delivery }>(`${ws(slug)}/members/`, { method: "POST", body: form }),
+    onSuccess: (mem) => { const [msg, bad] = deliveryNote(mem.full_name || mem.email, mem.delivery); toast(msg, bad); setForm({ full_name: "", email: "", phone: "", role: defaultRole }); onAdded(); onClose(); },
     onError: (e) => setErr(e as ApiError),
   });
   return (
@@ -90,4 +90,17 @@ export function AddMemberModal({ open, onClose, onAdded, defaultRole = "door_sta
 
 export default function StaffPage() {
   return (<><Topbar crumbs={["Staff"]} /><div className="content"><div className="page-head"><div><h1>Staff</h1></div></div><StaffPanel standalone /></div></>);
+}
+
+
+type Delivery = { email?: string; sms?: string };
+/** Says which channel reached the person, so a failed SMS is visible instead of a silent gap. */
+function deliveryNote(who: string, d?: Delivery): [string, boolean] {
+  const email = d?.email === "sent", sms = d?.sms === "sent";
+  const smsFail = d?.sms?.startsWith("failed") ? d.sms.replace(/^failed:\s*/, "") : "";
+  if (email && sms) return [`Invite sent to ${who} by email and SMS`, false];
+  if (email && smsFail) return [`Invite emailed to ${who}. The SMS did not go through: ${smsFail}`, true];
+  if (email) return [`Invite emailed to ${who}`, false];
+  if (sms) return [`Invite sent to ${who} by SMS. The email did not go through.`, true];
+  return [`${who} was added, but the invite did not go out. Use Resend invite, or check the email and phone.`, true];
 }

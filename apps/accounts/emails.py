@@ -3,6 +3,8 @@ Transactional emails, built from the designs on the Figma page "07 Email".
 Every message has a plain-text twin, so clients that block HTML still get the link.
 """
 
+import logging
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -10,12 +12,33 @@ from django.template.loader import render_to_string
 from .models import User
 
 
-def _send(to: str, subject: str, template: str, ctx: dict, text: str):
+log = logging.getLogger(__name__)
+
+
+def report(exc: Exception) -> None:
+    """Send to Sentry when it is installed and configured; never raise from here."""
+    try:
+        import sentry_sdk
+
+        sentry_sdk.capture_exception(exc)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _send(to: str, subject: str, template: str, ctx: dict, text: str) -> bool:
+    """True if the mail server accepted it. Failures are logged and reported, not raised and not
+    hidden: the caller decides what to tell the person (fail_silently used to swallow them)."""
     ctx = {"subject": subject, "site_url": settings.SITE_URL.rstrip("/"), **ctx}
-    html = render_to_string(template, ctx)
-    msg = EmailMultiAlternatives(subject=subject, body=text, from_email=settings.DEFAULT_FROM_EMAIL, to=[to])
-    msg.attach_alternative(html, "text/html")
-    msg.send(fail_silently=True)
+    try:
+        html = render_to_string(template, ctx)
+        msg = EmailMultiAlternatives(subject=subject, body=text, from_email=settings.DEFAULT_FROM_EMAIL, to=[to])
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001  (SMTP, DNS, template: any of them)
+        log.warning("Email to %s failed: %s", to, exc)
+        report(exc)
+        return False
 
 
 def role_label(role: str) -> str:
@@ -30,7 +53,7 @@ def send_invite_email(*, user: User, workspace, url: str, inviter: User | None =
     else:
         bullets = [f"You now have access to {workspace.name} on Trickshot Invitations.", "Set a password to get started."]
     note = f"This link works for 7 days and only once. Your login is {user.email}."
-    _send(
+    return _send(
         user.email,
         f"{who} added you to {workspace.name}",
         "email/button.html",
@@ -58,7 +81,7 @@ def send_reset_email(*, user: User, url: str):
         "If you didn\u2019t request a password reset, you can safely ignore this email. Your password will stay the same.",
     ]
     note = "This link works for 7 days and only once."
-    _send(
+    return _send(
         user.email,
         "Reset your Trickshot Invitations password",
         "email/button.html",
