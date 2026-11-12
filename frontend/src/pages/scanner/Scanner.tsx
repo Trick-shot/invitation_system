@@ -134,7 +134,7 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
         ? <SearchByName event={event} onPick={(id) => submit({ invitation_id: id })} onCancel={dismiss} />
         : <div className="sc-foot"><Button size="lg" block onClick={() => { paused.current = true; setState({ kind: "search" }); }}>Find a guest by name</Button></div>}
       <AnimatePresence>
-        {state.kind === "verdict" && <VerdictSheet key="v" v={state.v} onDismiss={dismiss} onAdmitAnyway={state.v.invitation_id ? () => submit({ invitation_id: state.v.invitation_id! }) : undefined} />}
+        {state.kind === "verdict" && <VerdictSheet key="v" v={state.v} onDismiss={dismiss} />}
         {state.kind === "offline" && (
           <motion.div key="off" className="sheet theme-dark" style={{ background: "#262220" }} {...sheetMotion}>
             <div className="verdict"><span className="badge-big" style={{ background: "#44403c" }}>{Icon.x}</span><div><h2>No connection</h2><div className="who">Scanning is paused. Hold the queue until this clears.</div></div></div>
@@ -148,16 +148,18 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
 
 const sheetMotion = { initial: { y: "100%" }, animate: { y: 0 }, exit: { y: "100%" }, transition: { type: "spring" as const, stiffness: 420, damping: 36, mass: 0.9 } };
 
-function VerdictSheet({ v, onDismiss, onAdmitAnyway }: { v: Verdict; onDismiss: () => void; onAdmitAnyway?: () => void }) {
+function VerdictSheet({ v, onDismiss }: { v: Verdict; onDismiss: () => void }) {
   const ok = v.result === "accepted";
   const tone = toneOf(v.result);
   const title = { accepted: "Admitted", exhausted: "Already in", unknown: "Not recognised", wrong_event: "Wrong event", closed: "Doors not open" }[v.result];
-  const sub = { accepted: v.guest_name, exhausted: v.guest_name, unknown: "This code is not an invitation for this event. Check the guest list by name.", wrong_event: `${v.guest_name} is invited to a different event.`, closed: "Ask the coordinator to open the doors before scanning." }[v.result];
+  // The guest's name is what the door person reads out, so it gets its own line, large. The note explains the verdict.
+  const name = v.result === "accepted" || v.result === "exhausted" || v.result === "wrong_event" ? v.guest_name : "";
+  const sub = { accepted: "", exhausted: v.capacity === 1 ? "This card admits one person and they are already in." : `All ${v.capacity} people on this card are already in.`, unknown: "This code is not an invitation for this event. Check the guest list by name.", wrong_event: "Invited to a different event.", closed: "Ask the coordinator to open the doors before scanning." }[v.result];
   return (
     <motion.div className={`sheet ${tone}`} {...sheetMotion}>
       <div className="verdict">
         <VerdictMark kind={tone} />
-        <div><h2>{title}</h2><div className="who">{sub}</div></div>
+        <div><h2>{title}</h2>{name && <div className="guest">{name}</div>}{sub && <div className="who">{sub}</div>}</div>
       </div>
       {(ok || v.result === "exhausted") && v.capacity > 0 && (
         <div className={`dots ${ok ? "" : "bad"}`}>
@@ -165,14 +167,14 @@ function VerdictSheet({ v, onDismiss, onAdmitAnyway }: { v: Verdict; onDismiss: 
             <motion.i key={i} className={i < v.admitted_count ? "on" : ""}
               initial={i < v.admitted_count ? { scale: 0.4 } : false} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 22, delay: 0.5 + i * 0.07 }} />
           ))}
-          <span style={{ marginLeft: 6 }}>{ok ? `${v.admitted_count} of ${v.capacity} admitted` : `All ${v.capacity} admitted`}</span>
+          <span style={{ marginLeft: 6 }}>{v.capacity === 1 ? (ok ? "Admits 1 person" : "1 of 1 in") : ok ? `${v.admitted_count} of ${v.capacity} in` : `${v.capacity} of ${v.capacity} in`}</span>
         </div>
       )}
       {v.result === "exhausted" && v.previous_scans.length > 0 && (
-        <div className="history"><div className="kicker">Already admitted</div>{v.previous_scans.map((s, i) => <div key={i} className="h"><span className="mono">{fmtTime(s.at)}</span><span className="muted">by {s.by}{s.manual ? " (by name)" : ""}</span></div>)}</div>
+        <div className="history"><div className="kicker">Let in</div>{v.previous_scans.map((s, i) => <div key={i} className="h"><span className="mono">{fmtTime(s.at)}</span><span className="muted">by {s.by}{s.manual ? " (by name)" : ""}</span></div>)}</div>
       )}
       <div className="sheet-actions">
-        {ok ? <Button size="lg" onClick={onDismiss}>Next guest</Button> : <><Button variant="ink" size="lg" onClick={onDismiss}>Dismiss</Button>{v.result === "exhausted" && onAdmitAnyway && <Button size="lg" onClick={onAdmitAnyway}>Admit anyway</Button>}</>}
+        {ok ? <Button size="lg" onClick={onDismiss}>Next guest</Button> : <Button variant="ink" size="lg" onClick={onDismiss}>Next guest</Button>}
       </div>
       {ok && <motion.div className="auto-bar" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 2.6, ease: "linear" }} />}
     </motion.div>
