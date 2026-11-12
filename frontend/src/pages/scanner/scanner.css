@@ -1,4 +1,4 @@
-.sc { min-height: 100%; background: var(--bg-surface); display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+.sc { min-height: 100vh; min-height: 100dvh; background: var(--bg-surface); display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
 .sc-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 16px; }
 .sc-head .ev { font-weight: 600; } .sc-head .gate { color: var(--text-tertiary); font-size: 13px; }
 .sc-head .count { text-align: right; } .sc-head .count b { display: block; font-family: var(--font-display); font-size: 26px; color: var(--text-accent); line-height: 1; } .sc-head .count span { font-size: 12px; color: var(--text-tertiary); }
@@ -9,22 +9,30 @@
 .reticle i { position: absolute; width: 28px; height: 28px; border: 3px solid #fff; border-radius: 4px; }
 .reticle i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; } .reticle i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
 .reticle i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; } .reticle i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
-.scanline { position: absolute; left: 12px; right: 12px; top: 50%; height: 2px; background: #fff; box-shadow: 0 0 10px 2px rgba(200, 160, 255, .9); animation: sweep 2.2s ease-in-out infinite; }
-@keyframes sweep { 0%, 100% { transform: translateY(-80px); } 50% { transform: translateY(80px); } }
+/* Scan line: a soft bar that fades at both ends and sweeps on a linear clock, so it reads as a sweep, not a twitch. Hidden while a verdict is up. */
+.scanline { position: absolute; left: 10px; right: 10px; top: 50%; height: 3px; border-radius: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.95) 20%, rgba(255,255,255,.95) 80%, transparent); box-shadow: 0 0 14px 3px rgba(200, 160, 255, .6); animation: sweep 2.4s cubic-bezier(.45,0,.55,1) infinite; will-change: transform; }
+@keyframes sweep { 0%, 100% { transform: translateY(-86px); } 50% { transform: translateY(86px); } }
+.cam.checking .scanline, .cam.verdict .scanline, .cam.offline .scanline { animation-play-state: paused; opacity: 0; transition: opacity .2s; }
+.cam.checking .reticle i { animation: breathe 1s ease-in-out infinite; } @keyframes breathe { 50% { transform: scale(1.08); opacity: .7; } }
+.cam.checking .reticle i:nth-child(1), .cam.checking .reticle i:nth-child(2), .cam.checking .reticle i:nth-child(3), .cam.checking .reticle i:nth-child(4) { transform-origin: center; }
+.flash { position: absolute; inset: 0; pointer-events: none; }
+.flash.ok { background: var(--verdict-admitted); } .flash.bad { background: var(--verdict-full); } .flash.warn { background: var(--verdict-unknown); }
+.icon-btn { width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; }
 .cam .hint { position: absolute; left: 20px; right: 20px; top: calc(42% + 140px); text-align: center; color: rgba(255,255,255,.85); font-size: 15px; pointer-events: none; }
-.cam .checking { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.cam .checking { position: absolute; bottom: 16px; z-index: 2; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
 .sc-foot { padding: 14px 24px 22px; display: flex; flex-direction: column; gap: 10px; }
-.sheet { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 480px; background: var(--bg-surface); border-radius: 24px 24px 0 0; padding: 24px 24px 28px; box-shadow: 0 -6px 24px rgba(26,20,41,.12); z-index: 30; }
+.sheet { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: 0; width: 100%; max-width: 480px; overflow: hidden; background: var(--bg-surface); border-radius: 24px 24px 0 0; padding: 24px 24px calc(28px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 24px rgba(26,20,41,.12); z-index: 30; }
 .sheet.ok { background: var(--verdict-admitted-bg); } .sheet.bad { background: var(--verdict-full-bg); } .sheet.warn { background: var(--verdict-unknown-bg); }
 .verdict { display: flex; align-items: center; gap: 16px; }
 .verdict .badge-big { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
-.verdict h2 { font-size: 30px; } .verdict .who { color: var(--text-secondary); font-size: 16px; }
+.verdict h2 { font-size: 32px; line-height: 1.05; } .verdict .who { color: var(--text-secondary); font-size: 16px; }
 .dots { display: flex; align-items: center; gap: 6px; margin: 14px 0; font-size: 14px; }
 .dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--border-strong); } .dots i.on { background: var(--verdict-admitted); } .dots.bad i.on { background: var(--verdict-full); }
 .history { background: var(--bg-surface); border-radius: 12px; padding: 12px 16px; margin: 8px 0 16px; }
 .history .h { display: flex; gap: 10px; padding: 6px 0; font-size: 14px; }
 .sheet-actions { display: flex; gap: 10px; margin-top: 8px; }
 .sheet-actions .btn { flex: 1; }
+.auto-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--verdict-admitted); transform-origin: left; opacity: .6; }
 .events-list { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px; }
 .events-list .choice { padding: 16px; }
 .pop { animation: pop .5s var(--ease); } @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
