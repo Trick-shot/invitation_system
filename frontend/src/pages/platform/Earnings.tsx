@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../../api/client";
 import type { BillStatus, EarningsData, EventBillData } from "../../api/types";
 import { Button, ErrorState, SkelPanel, SkelStats, Stat, Stagger, fmtDate, useToast } from "../../components/ui";
-import { BillBadge, pct, tzs } from "./money";
+import { BillBadge, pct, rateLabel, tzs } from "./money";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -25,8 +25,8 @@ export default function Earnings() {
       {!e ? <SkelStats n={5} /> : (
         <Stagger className="stats five">
           <Stat label="SMS sent" value={e.sms} delta="segments Beem charged" active />
-          <Stat label="Beem cost, TZS" value={Math.round(e.cost)} delta={`at TZS ${tzs(e.cost_per_sms)} per SMS`} />
-          <Stat label="Billed, TZS" value={Math.round(e.billed)} delta={`at TZS ${tzs(e.price_per_sms)} per SMS`} />
+          <Stat label="Beem cost, TZS" value={Math.round(e.cost)} delta={`at TZS ${rateLabel(e.costs_used, e.cost_per_sms)} per SMS`} />
+          <Stat label="Billed, TZS" value={Math.round(e.billed)} delta={`at TZS ${rateLabel(e.prices_used, e.price_per_sms)} per SMS`} />
           <Stat label="Profit, TZS" value={Math.round(e.profit)} delta={`${pct(e.profit, e.billed)} of what you billed`} tone="success" />
           <Stat label="Unpaid, TZS" value={Math.round(e.unpaid)} delta={e.unpaid ? `${e.unpaid_open} open, ${e.unpaid_invoiced} invoiced` : "all settled"} tone={e.unpaid_invoiced ? "danger" : "neutral"} />
         </Stagger>
@@ -94,8 +94,8 @@ export function PlatformEventBill() {
       </div>
       <Stagger className="stats five">
         <Stat label="SMS sent" value={b.sms} delta={`from ${b.messages.toLocaleString("en-US")} messages`} active />
-        <Stat label="Beem cost, TZS" value={Math.round(b.cost ?? 0)} delta={`at TZS ${tzs(b.cost_per_sms)} per SMS`} />
-        <Stat label="Billed, TZS" value={Math.round(b.amount)} delta={`at TZS ${tzs(b.price_per_sms)} per SMS`} />
+        <Stat label="Beem cost, TZS" value={Math.round(b.cost ?? 0)} delta={`at TZS ${rateLabel(b.costs_used, b.cost_per_sms)} per SMS`} />
+        <Stat label="Billed, TZS" value={Math.round(b.amount)} delta={`at TZS ${rateLabel(b.prices_used, b.price_per_sms)} per SMS`} />
         <Stat label="Profit, TZS" value={Math.round(b.profit ?? 0)} delta={`${pct(b.profit ?? 0, b.amount)} of the bill`} tone="success" />
         <Stat label="Bill" value={<BillBadge bill={b.bill} />} delta={b.bill.status === "open" ? "invoice when the event closes" : b.bill.status === "invoiced" ? "mark paid when the money arrives" : "settled"} />
       </Stagger>

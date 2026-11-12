@@ -69,17 +69,17 @@ export interface HowToPay { business_name: string; instructions: string; support
 export interface PlatformSettingsData { business_name: string; support_email: string; support_phone: string; payment_instructions: string; invoice_due_days: number; updated_at: string }
 export type BillStatus = "open" | "invoiced" | "paid";
 export interface BillState { status: BillStatus; invoiced_at: string | null; due_at: string | null; paid_at: string | null }
-export interface KindRow { kind: string; label: string; messages: number; sms: number; amount: number; cost?: number; profit?: number }
+export interface KindRow { kind: string; label: string; messages: number; sms: number; amount: number; prices_used: number[]; cost?: number; profit?: number }
 export interface EventBillData {
   event: { id: number; name: string; date: string; status: EventStatus; workspace: string; workspace_id: number };
-  bill: BillState; currency: string; price_per_sms: number; messages: number; sms: number; amount: number;
+  bill: BillState; currency: string; price_per_sms: number; prices_used: number[]; messages: number; sms: number; amount: number;
   still_to_come: { welcome_texts: number; amount: number }; by_kind: KindRow[];
   charges: { recipient: string; kind: string; label: string; sms: number; price_per_sms: number; amount: number; at: string }[];
-  cost?: number; profit?: number; cost_per_sms?: number; how_to_pay?: HowToPay;
+  cost?: number; profit?: number; cost_per_sms?: number; costs_used?: number[]; how_to_pay?: HowToPay;
 }
-export interface BillingData { currency: string; price_per_sms: number; to_pay_now: number; running: number; paid_this_year: number; sms_this_year: number; events: { id: number; name: string; date: string; sms: number; amount: number; price_per_sms: number; bill: BillState }[]; how_to_pay: HowToPay }
+export interface BillingData { currency: string; price_per_sms: number; prices_used: number[]; to_pay_now: number; running: number; paid_this_year: number; sms_this_year: number; events: { id: number; name: string; date: string; sms: number; amount: number; prices_used: number[]; bill: BillState }[]; how_to_pay: HowToPay }
 export interface EarningsData {
-  year: number; month: number; currency: string; cost_per_sms: number; price_per_sms: number; sms: number; cost: number; billed: number; profit: number;
+  year: number; month: number; currency: string; cost_per_sms: number; price_per_sms: number; prices_used: number[]; costs_used: number[]; sms: number; cost: number; billed: number; profit: number;
   unpaid: number; unpaid_open: number; unpaid_invoiced: number; profit_by_month: { year: number; month: number; profit: number }[];
   events: { id: number; name: string; workspace: string; workspace_id: number; date: string; sms: number; cost: number; billed: number; profit: number; bill: BillState }[];
 }

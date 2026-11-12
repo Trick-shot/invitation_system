@@ -13,7 +13,7 @@ from apps.tenancy.context import workspace_context
 from apps.tenancy.models import Workspace
 from apps.tenancy.permissions import ADMIN, MANAGERS, active_membership
 
-from .service import event_bill, workspace_billing
+from .service import event_bill, rate_label, workspace_billing
 
 
 def _load(request, slug, roles):
@@ -42,7 +42,7 @@ class WorkspaceBillingView(APIView):
         ws = _load(request, workspace_slug, {ADMIN})
         data = workspace_billing(ws)
         if request.query_params.get("download") == "csv":
-            rows = [[e["name"], e["date"], e["sms"], e["price_per_sms"], e["amount"], e["bill"]["status"]] for e in data["events"]]
+            rows = [[e["name"], e["date"], e["sms"], rate_label(e["prices_used"]), e["amount"], e["bill"]["status"]] for e in data["events"]]
             return _csv(f"{ws.slug}-statement.csv", ["Event", "Date", "SMS", f"Price per SMS ({data['currency']})", f"Amount ({data['currency']})", "Bill"], rows)
         return Response(data)
 

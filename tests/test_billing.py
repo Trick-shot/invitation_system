@@ -110,3 +110,34 @@ def test_change_details_needs_a_reason_and_tells_the_client(owner, admin_a, ws_a
     assert any("Client asked by phone" in m.body for m in mailoutbox)
     d = o.get(base).data
     assert d["activity"][0]["kind"] == "details_changed" and "money" in d and d["contact"]["email"]
+
+
+def test_a_new_rate_shows_only_on_new_sms(owner, api_a, ws_a, event_a, inv_a):
+    """Changing the price never reprices SMS already sent, and the bill says which rates it used."""
+    rates = SmsRates.current()
+    rates.cost_per_sms, rates.price_per_sms = Decimal("25"), Decimal("35")
+    rates.save()
+    send(api_a, ws_a, event_a, [inv_a.pk])
+    rates.price_per_sms = Decimal("85")
+    rates.save()
+    billing = api_a.get(f"/api/workspaces/{ws_a.slug}/billing/").data
+    row = billing["events"][0]
+    assert [Decimal(p) for p in row["prices_used"]] == [Decimal("35")]
+    assert Decimal(billing["price_per_sms"]) == Decimal("85")  # what the next SMS costs
+    sms = SmsCharge.objects.all_workspaces().get(invitation=inv_a).segments
+    assert Decimal(row["amount"]) == 35 * sms
+    # A resend after the change is charged at the new rate; the bill now lists both.
+    send(api_a, ws_a, event_a, [inv_a.pk], force=True)
+    bill = api_a.get(f"/api/workspaces/{ws_a.slug}/events/{event_a.pk}/bill/").data
+    assert [Decimal(p) for p in bill["prices_used"]] == [Decimal("35"), Decimal("85")]
+    csv = api_a.get(f"/api/workspaces/{ws_a.slug}/billing/", {"download": "csv"})
+    assert b"35 and 85" in csv.content
+
+
+def test_rate_label():
+    from apps.billing.service import rate_label
+
+    assert rate_label([Decimal("35")]) == "35"
+    assert rate_label([Decimal("35"), Decimal("85")]) == "35 and 85"
+    assert rate_label([Decimal("30"), Decimal("35"), Decimal("85")]) == "30 to 85"
+    assert rate_label([Decimal("35.50")]) == "35.50"

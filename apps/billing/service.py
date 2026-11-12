@@ -76,13 +76,31 @@ def totals(qs) -> dict:
     return agg
 
 
+def used(qs, field: str = "price_per_sms") -> list[Decimal]:
+    """The rates these charges were actually written at, lowest first.
+
+    Each SMS keeps the rate of the day it was sent, so a bill can hold more than one.
+    Pages show these, never today's rate, next to an amount that was worked out from them."""
+    return sorted(set(qs.order_by().values_list(field, flat=True).distinct()))
+
+
+def rate_label(rates: list) -> str:
+    """35, "35 and 85", "35 to 85"."""
+    nums = [f"{r:,.0f}" if r == int(r) else f"{r:,.2f}" for r in rates]
+    if not nums:
+        return ""
+    if len(nums) == 1:
+        return nums[0]
+    return f"{nums[0]} and {nums[1]}" if len(nums) == 2 else f"{nums[0]} to {nums[-1]}"
+
+
 def by_kind(qs, *, with_cost: bool) -> list[dict]:
     rows = []
     for kind, label in SmsCharge.Kind.choices:
         t = totals(qs.filter(kind=kind))
         if not t["messages"]:
             continue
-        row = {"kind": kind, "label": label, "messages": t["messages"], "sms": t["sms"], "amount": t["billed"]}
+        row = {"kind": kind, "label": label, "messages": t["messages"], "sms": t["sms"], "amount": t["billed"], "prices_used": used(qs.filter(kind=kind))}
         if with_cost:
             row.update(cost=t["cost"], profit=t["profit"])
         rows.append(row)
@@ -127,7 +145,8 @@ def event_bill(event, *, with_cost: bool, latest: int = 20) -> dict:
         "event": {"id": event.pk, "name": event.name, "date": event.date, "status": event.status, "workspace": event.workspace.name, "workspace_id": event.workspace_id},
         "bill": bill_dict(bill_of(event)),
         "currency": rates.currency,
-        "price_per_sms": price,
+        "price_per_sms": price,  # today's rate: what the next SMS will cost
+        "prices_used": used(qs),  # the rates this bill was worked out at
         "messages": t["messages"],
         "sms": t["sms"],
         "amount": t["billed"],
@@ -139,7 +158,7 @@ def event_bill(event, *, with_cost: bool, latest: int = 20) -> dict:
         ],
     }
     if with_cost:
-        data.update(cost=t["cost"], profit=t["profit"], cost_per_sms=rates.cost_per_sms)
+        data.update(cost=t["cost"], profit=t["profit"], cost_per_sms=rates.cost_per_sms, costs_used=used(qs, "cost_per_sms"))
     else:
         data["how_to_pay"] = how_to_pay()
     return data
@@ -154,9 +173,10 @@ def workspace_billing(workspace) -> dict:
     events = Event.objects.all_workspaces().filter(workspace=workspace, sms_charges__isnull=False).distinct().order_by("-date")
     rows, to_pay, running, paid_year, sms_year = [], ZERO, ZERO, ZERO, 0
     for ev in events:
-        t = totals(SmsCharge.objects.all_workspaces().filter(event=ev))
+        ev_qs = SmsCharge.objects.all_workspaces().filter(event=ev)
+        t = totals(ev_qs)
         bill = bill_of(ev)
-        rows.append({"id": ev.pk, "name": ev.name, "date": ev.date, "sms": t["sms"], "amount": t["billed"], "price_per_sms": rates.price_per_sms, "bill": bill_dict(bill)})
+        rows.append({"id": ev.pk, "name": ev.name, "date": ev.date, "sms": t["sms"], "amount": t["billed"], "prices_used": used(ev_qs), "bill": bill_dict(bill)})
         if bill.status == EventBill.Status.INVOICED:
             to_pay += t["billed"]
         elif bill.status == EventBill.Status.OPEN:
@@ -168,6 +188,7 @@ def workspace_billing(workspace) -> dict:
     return {
         "currency": rates.currency,
         "price_per_sms": ZERO if _uses_own_keys(workspace) else rates.price_per_sms,
+        "prices_used": sorted({p for r in rows for p in r["prices_used"]}),
         "to_pay_now": to_pay,
         "running": running,
         "paid_this_year": paid_year,
@@ -229,6 +250,7 @@ def earnings(year: int, month: int) -> dict:
     return {
         "year": year, "month": month, "currency": rates.currency,
         "cost_per_sms": rates.cost_per_sms, "price_per_sms": rates.price_per_sms,
+        "prices_used": used(month_qs), "costs_used": used(month_qs, "cost_per_sms"),
         "sms": t["sms"], "cost": t["cost"], "billed": t["billed"], "profit": t["profit"],
         "unpaid": unpaid, "unpaid_open": open_n, "unpaid_invoiced": invoiced_n,
         "profit_by_month": history,

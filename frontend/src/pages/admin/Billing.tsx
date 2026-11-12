@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, tokens, ws } from "../../api/client";
 import type { BillingData, EventBillData, HowToPay as HowToPayData } from "../../api/types";
 import { Button, ErrorState, SkelPanel, SkelStats, Stat, Stagger, fmtDate } from "../../components/ui";
-import { BillBadge, tzs } from "../platform/money";
+import { BillBadge, rateChanged, rateLabel, tzs } from "../platform/money";
 import "../platform/platform.css";
 import { Topbar, useWorkspace } from "./Shell";
 
@@ -37,7 +37,7 @@ export default function Billing() {
       <Topbar crumbs={["Billing"]} />
       <div className="content">
         <div className="p-head">
-          <div><h1>Billing</h1><p className="muted">What you pay for SMS, event by event.{b ? ` Every SMS is TZS ${tzs(b.price_per_sms)}, and each event is billed after it closes.` : ""}</p></div>
+          <div><h1>Billing</h1><p className="muted">What you pay for SMS, event by event.{b ? (rateChanged(b.prices_used, b.price_per_sms) ? ` New SMS are TZS ${tzs(b.price_per_sms)} each; SMS already sent keep the price they were sent at. Each event is billed after it closes.` : ` Every SMS is TZS ${tzs(b.price_per_sms)}, and each event is billed after it closes.`) : ""}</p></div>
           {b && b.events.length > 0 && <Button onClick={() => download(`${ws(slug)}/billing/?download=csv`, `${slug}-statement.csv`)}>Download statement</Button>}
         </div>
         {role !== "admin" ? <div className="panel"><div className="empty" style={{ padding: 32 }}><h3>Only an admin can see billing</h3><p>Ask an admin in your workspace.</p></div></div>
@@ -49,7 +49,7 @@ export default function Billing() {
                 <Stat label="To pay now, TZS" value={Math.round(b.to_pay_now)} delta={invoiced ? `${invoiced.name}, invoiced${invoiced.bill.invoiced_at ? ` ${fmtDate(invoiced.bill.invoiced_at.slice(0, 10))}` : ""}` : "nothing invoiced"} tone={b.to_pay_now ? "danger" : "neutral"} active />
                 <Stat label="Running, TZS" value={Math.round(b.running)} delta={running ? `${running.name}, billed when it closes` : "no event running"} />
                 <Stat label="Paid this year, TZS" value={Math.round(b.paid_this_year)} delta={`${paidCount} event${paidCount === 1 ? "" : "s"}`} />
-                <Stat label="SMS used" value={b.sms_this_year} delta={`at TZS ${tzs(b.price_per_sms)} each`} />
+                <Stat label="SMS used" value={b.sms_this_year} delta={`at TZS ${rateLabel(b.prices_used, b.price_per_sms)} each`} />
               </Stagger>
               <div className="panel" style={{ overflowX: "auto" }}>
                 <table className="table">
@@ -58,7 +58,7 @@ export default function Billing() {
                     {b.events.length === 0 && <tr><td colSpan={6} className="quiet" style={{ textAlign: "center", padding: 24 }}>No SMS sent yet. Bills appear here once invitations go out.</td></tr>}
                     {b.events.map((e) => (
                       <tr key={e.id} className="clickable" onClick={() => nav(`/app/${slug}/billing/${e.id}`)}>
-                        <td><b>{e.name}</b></td><td>{fmtDate(e.date)}</td><td className="money">{tzs(e.sms)}</td><td className="money">{tzs(e.price_per_sms)}</td><td className="money">{tzs(e.amount)}</td><td><BillBadge bill={e.bill} /></td>
+                        <td><b>{e.name}</b></td><td>{fmtDate(e.date)}</td><td className="money">{tzs(e.sms)}</td><td className="money">{rateLabel(e.prices_used)}</td><td className="money">{tzs(e.amount)}</td><td><BillBadge bill={e.bill} /></td>
                       </tr>
                     ))}
                     {total && b.events.length > 0 && <tr className="total"><td>Total, {b.events.length} event{b.events.length === 1 ? "" : "s"}</td><td /><td className="money">{tzs(total.sms)}</td><td /><td className="money">{tzs(total.amount)}</td><td /></tr>}
@@ -66,7 +66,7 @@ export default function Billing() {
                 </table>
               </div>
               {b.to_pay_now > 0 && <HowToPay pay={b.how_to_pay} amount={b.to_pay_now} due={invoiced?.bill.due_at ?? null} />}
-              <div className="note"><b>How the amount is worked out</b><p>Every SMS costs TZS {tzs(b.price_per_sms)}. A message up to 160 characters is 1 SMS, longer ones are 2 or more, and an emoji or curly quote lowers the limit to 70. Open a bill to see every message it charges for, or download it as a spreadsheet.</p></div>
+              <div className="note"><b>How the amount is worked out</b><p>{rateChanged(b.prices_used, b.price_per_sms) ? `Each SMS is charged at the price on the day it was sent: TZS ${rateLabel(b.prices_used)} so far, TZS ${tzs(b.price_per_sms)} from now on. ` : `Every SMS costs TZS ${tzs(b.price_per_sms)}. `}A message up to 160 characters is 1 SMS, longer ones are 2 or more, and an emoji or curly quote lowers the limit to 70. Open a bill to see every message it charges for, or download it as a spreadsheet.</p></div>
             </>
           )}
       </div>
@@ -92,7 +92,7 @@ export function EventBillPage() {
                 {b.messages > 0 && <Button onClick={() => download(`${ws(slug)}/events/${eventId}/bill/?download=csv`, `${slug}-${eventId}-bill.csv`)}>Download bill</Button>}
               </div>
               <Stagger className="stats">
-                <Stat label="Amount so far, TZS" value={Math.round(b.amount)} delta={`${tzs(b.sms)} SMS at TZS ${tzs(b.price_per_sms)}`} active />
+                <Stat label="Amount so far, TZS" value={Math.round(b.amount)} delta={`${tzs(b.sms)} SMS at TZS ${rateLabel(b.prices_used, b.price_per_sms)}`} active />
                 <Stat label="Messages sent" value={b.messages} delta={b.by_kind.map((k) => k.label.toLowerCase() + "s").join(", ") || "none yet"} />
                 <Stat label="Still to come" value={b.still_to_come.welcome_texts ? `About ${b.still_to_come.welcome_texts}` : "None"} delta={b.still_to_come.welcome_texts ? `welcome texts, about TZS ${tzs(b.still_to_come.amount)}` : "no welcome texts expected"} />
                 <Stat label="Bill" value={<BillBadge bill={b.bill} />} delta={b.bill.status === "open" ? "invoice when the event closes" : b.bill.status === "invoiced" ? "please pay by the due date" : "thank you"} />
@@ -103,7 +103,7 @@ export function EventBillPage() {
                   <thead><tr><th>What was sent</th><th className="money">Messages</th><th className="money">SMS</th><th className="money">Price per SMS</th><th className="money">Amount, TZS</th></tr></thead>
                   <tbody>
                     {b.by_kind.length === 0 && <tr><td colSpan={5} className="quiet" style={{ textAlign: "center", padding: 24 }}>Nothing charged yet.</td></tr>}
-                    {b.by_kind.map((k) => <tr key={k.kind}><td>{k.label}{k.kind === "welcome" ? "s at the door" : "s"}</td><td className="money">{tzs(k.messages)}</td><td className="money">{tzs(k.sms)}</td><td className="money">{tzs(b.price_per_sms)}</td><td className="money">{tzs(k.amount)}</td></tr>)}
+                    {b.by_kind.map((k) => <tr key={k.kind}><td>{k.label}{k.kind === "welcome" ? "s at the door" : "s"}</td><td className="money">{tzs(k.messages)}</td><td className="money">{tzs(k.sms)}</td><td className="money">{rateLabel(k.prices_used, b.price_per_sms)}</td><td className="money">{tzs(k.amount)}</td></tr>)}
                     {b.by_kind.length > 0 && <tr className="total"><td>Total</td><td className="money">{tzs(b.messages)}</td><td className="money">{tzs(b.sms)}</td><td /><td className="money">{tzs(b.amount)}</td></tr>}
                   </tbody>
                 </table>
