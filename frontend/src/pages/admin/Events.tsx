@@ -85,7 +85,7 @@ export function NewEventModal({ open, onClose, onCreated }: { open: boolean; onC
       actions={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="ink" loading={m.isPending} onClick={() => m.mutate()} disabled={!form.name || !form.date}>Create event</Button></>}>
       <div className="stack" style={{ gap: 14 }}>
         <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Kimaro Wedding" autoFocus={!phone} /></Field>
-        <div className="row" style={{ alignItems: "flex-start" }}>
+        <div className="row form-pair" style={{ alignItems: "flex-start" }}>
           <Field label="Date" error={err?.field("date")}><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
           <Field label="Start time"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></Field>
         </div>
@@ -127,7 +127,7 @@ export function EditEventModal({ open, onClose, event }: { open: boolean; onClos
       actions={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="ink" loading={save.isPending} onClick={() => save.mutate()} disabled={!form.name || !form.date}>Save changes</Button></>}>
       <div className="stack" style={{ gap: 14 }}>
         <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus={!phone} /></Field>
-        <div className="row" style={{ alignItems: "flex-start" }}>
+        <div className="row form-pair" style={{ alignItems: "flex-start" }}>
           <Field label="Date" error={err?.field("date")}><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
           <Field label="Start time"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></Field>
         </div>

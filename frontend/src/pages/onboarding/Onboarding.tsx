@@ -72,7 +72,7 @@ function Step1({ onDone, later }: { onDone: (id: number) => void; later: () => v
       </div>
       <div className="ob-form">
         <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Kimaro Wedding" /></Field>
-        <div className="row" style={{ alignItems: "flex-start" }}>
+        <div className="row form-pair" style={{ alignItems: "flex-start" }}>
           <Field label="Date" error={err?.field("date")}><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
           <Field label="Venue"><Input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Kunduchi Beach Hotel" /></Field>
         </div>
