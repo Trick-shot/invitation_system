@@ -101,7 +101,10 @@
   .event-head { display: none; }
   .readiness { display: none; }
   /* tabs scroll */
-  .tabs { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+  /* Horizontal only: overflow-y hidden stops the vertical bounce, touch-action pan-x hands vertical swipes to the page,
+     overscroll-behavior stops the rubber band chaining into the page. The mask fades the tabs under the Edit button. */
+  .tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; touch-action: pan-x; overscroll-behavior-x: contain; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  .tab { scroll-snap-align: start; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { white-space: nowrap; padding: 12px 8px; }
   /* stats: four across, compact */

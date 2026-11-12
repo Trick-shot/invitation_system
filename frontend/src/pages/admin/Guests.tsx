@@ -45,6 +45,9 @@ export default function Guests() {
         <div className="panel"><Empty illustration="address-book" title="No guests yet" action={<div className="row"><Button onClick={() => setImporting(true)}>Import a list</Button><Button variant="primary" onClick={() => setAdding(true)}>Add one by hand</Button></div>}>Bring them in from your phone, a pasted list, or a file. We check every number before anything is sent.</Empty></div>
       ) : (
         <div className="panel">
+          {list.isLoading && <div className="panel-pad" style={{ display: "grid", placeItems: "center", padding: 40 }}><Loader label="Loading guests" /></div>}
+          {list.isError && <div className="empty" style={{ padding: 32 }}><h3>Could not load the guest list</h3><p>Check your connection and try again.</p><div style={{ marginTop: 8 }}><Button onClick={() => list.refetch()}>Try again</Button></div></div>}
+          {list.isSuccess && total === 0 && <div className="empty" style={{ padding: 32 }}><h3>No guests match</h3><p>{q ? `Nothing found for "${q}".` : "Nobody is in this group yet."}</p><div style={{ marginTop: 8 }}><Button variant="ghost" onClick={() => { setQ(""); setParams({}); }}>Show everyone</Button></div></div>}
           <div className="m-list">
             {(list.data?.results ?? []).map((g) => (
               <div key={g.id} className="m-guest" onClick={() => setRemoving(g)} role="button">
