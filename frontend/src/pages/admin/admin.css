@@ -122,7 +122,11 @@
   .phone { width: 100%; }
   /* modals become sheets */
   .scrim { place-items: end center !important; padding: 0 !important; }
-  .modal { width: 100% !important; max-width: none !important; border-radius: 16px 16px 0 0 !important; max-height: 92dvh; overflow: auto; }
+  .modal.sheet { width: 100% !important; max-width: none !important; border-radius: 18px 18px 0 0 !important; max-height: 92dvh; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 10px 20px calc(24px + env(safe-area-inset-bottom, 0px)); will-change: transform; }
+  .sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border-default); margin: 0 auto 14px; }
+  .modal.sheet .row > .field { flex: 1; min-width: 0; }
+  .modal.sheet .modal-actions { flex-direction: column-reverse; gap: 10px; }
+  .modal.sheet .modal-actions .btn { width: 100%; }
   .event-card .nums { flex-wrap: wrap; gap: 16px; }
   .split-aside { grid-template-columns: 1fr; }
   .banner { flex-direction: column; align-items: stretch; }

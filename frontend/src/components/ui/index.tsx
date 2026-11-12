@@ -99,18 +99,49 @@ export function Track({ value, max, tone }: { value: number; max: number; tone?:
 }
 
 /* ---------- Modal ---------- */
+const SHEET_QUERY = "(max-width: 820px)";
+export function useIsPhone() {
+  const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia(SHEET_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(SHEET_QUERY);
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return phone;
+}
+
+/* Lock the page behind an open modal. iOS ignores overflow:hidden on body, so we pin it and restore the scroll position on close. */
+function useScrollLock(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const y = window.scrollY;
+    const b = document.body.style;
+    const prev = { position: b.position, top: b.top, width: b.width, overflow: b.overflow };
+    b.position = "fixed"; b.top = `-${y}px`; b.width = "100%"; b.overflow = "hidden";
+    return () => { Object.assign(b, prev); window.scrollTo(0, y); };
+  }, [active]);
+}
+
 export function Modal({ open, onClose, title, sub, children, actions, wide }: { open: boolean; onClose: () => void; title: string; sub?: string; children?: ReactNode; actions?: ReactNode; wide?: boolean }) {
+  const phone = useIsPhone();
+  useScrollLock(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+  // Phones get a sheet that slides up; a scaled pop looks wrong on a box pinned to the screen edge.
+  const motionProps = phone
+    ? { initial: { y: "100%" }, animate: { y: 0 }, exit: { y: "100%" }, transition: { type: "spring" as const, stiffness: 380, damping: 38, mass: 0.9 } }
+    : { initial: { y: 16, scale: 0.97, opacity: 0 }, animate: { y: 0, scale: 1, opacity: 1 }, exit: { y: 8, scale: 0.98, opacity: 0 }, transition: { type: "spring" as const, stiffness: 420, damping: 32, mass: 0.8 } };
   return (
     <AnimatePresence>
       {open && (
         <motion.div className="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <motion.div className="modal" style={wide ? { maxWidth: 760 } : undefined} role="dialog" aria-modal initial={{ y: 16, scale: 0.97, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 8, scale: 0.98, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}>
+          <motion.div className={`modal ${phone ? "sheet" : ""}`} style={wide && !phone ? { maxWidth: 760 } : undefined} role="dialog" aria-modal {...motionProps}>
+            {phone && <div className="sheet-handle" aria-hidden />}
             <h2>{title}</h2>
             {sub && <p className="sub">{sub}</p>}
             <div style={{ marginTop: 20 }}>{children}</div>

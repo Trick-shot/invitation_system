@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
 import type { ImportPreview, Invitation, Paginated, PreviewRow } from "../../api/types";
-import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, Field, Input, Modal, Track, useToast, CapacityPicker } from "../../components/ui";
+import { Avatar, Badge, Button, Chip, DoneTick, Loader, Empty, Field, Input, Modal, Track, useToast, CapacityPicker, useIsPhone } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { Icon } from "./Shell";
 
@@ -85,6 +85,7 @@ export default function Guests() {
 }
 
 export function AddGuestModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+  const phone = useIsPhone();
   const { slug, eventId } = useEvent();
   const [form, setForm] = useState({ name: "", phone: "", capacity: 1 });
   const [err, setErr] = useState<ApiError | null>(null);
@@ -100,7 +101,7 @@ export function AddGuestModal({ open, onClose, onAdded }: { open: boolean; onClo
     <Modal open={open} onClose={onClose} title="Add a guest" sub="Press Enter to add and keep going."
       actions={<><span className="quiet grow" style={{ alignSelf: "center" }}>{count ? `${count} added this session` : ""}</span><Button variant="ghost" onClick={onClose}>Done</Button><Button variant="ink" loading={m.isPending} onClick={() => m.mutate()} disabled={!form.name || !form.phone}>Add guest</Button></>}>
       <form onSubmit={(e) => { e.preventDefault(); if (form.name && form.phone) m.mutate(); }} className="stack" style={{ gap: 14 }}>
-        <Field label="Name" error={err?.field("name")}><Input ref={nameRef} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
+        <Field label="Name" error={err?.field("name")}><Input ref={nameRef} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus={!phone} /></Field>
         <Field label="Phone" hint="Any format. 0712 345 678 becomes +255 712 345 678." error={err?.field("phone")}><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} inputMode="tel" invalid={!!err?.field("phone")} /></Field>
         <Field label="People on this card" hint="Up to 20. The scanner counts each person in as they arrive."><CapacityPicker value={form.capacity} onChange={(n) => setForm({ ...form, capacity: n })} /></Field>
         <button type="submit" hidden />

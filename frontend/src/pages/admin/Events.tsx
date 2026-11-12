@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { api, ApiError, ws } from "../../api/client";
 import type { Event, EventKind } from "../../api/types";
-import { Badge, Button, Chip, Empty, Field, Input, Modal, Track, fmtDate, useToast, CountUp } from "../../components/ui";
+import { Badge, Button, Chip, Empty, Field, Input, Modal, Track, fmtDate, useToast, CountUp, useIsPhone } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 const statusBadge = (s: Event["status"]) => s === "open" ? <Badge tone="success" dot>Doors open</Badge> : s === "draft" ? <Badge dot>Draft</Badge> : <Badge dot>Closed</Badge>;
@@ -56,6 +56,7 @@ export default function Events() {
 }
 
 export function NewEventModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: (e: Event) => void }) {
+  const phone = useIsPhone();
   const { slug } = useWorkspace();
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -72,7 +73,7 @@ export function NewEventModal({ open, onClose, onCreated }: { open: boolean; onC
     <Modal open={open} onClose={onClose} title="New event" sub="Name, date and place. Everything else comes after."
       actions={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="ink" loading={m.isPending} onClick={() => m.mutate()} disabled={!form.name || !form.date}>Create event</Button></>}>
       <div className="stack" style={{ gap: 14 }}>
-        <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Kimaro Wedding" autoFocus /></Field>
+        <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Kimaro Wedding" autoFocus={!phone} /></Field>
         <div className="row" style={{ alignItems: "flex-start" }}>
           <Field label="Date" error={err?.field("date")}><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
           <Field label="Start time"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></Field>
@@ -87,6 +88,7 @@ export function NewEventModal({ open, onClose, onCreated }: { open: boolean; onC
 
 /** Edit the basics of an existing event, or delete it after typing its name. */
 export function EditEventModal({ open, onClose, event }: { open: boolean; onClose: () => void; event: Event }) {
+  const phone = useIsPhone();
   const { slug } = useWorkspace();
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -113,7 +115,7 @@ export function EditEventModal({ open, onClose, event }: { open: boolean; onClos
     <Modal open={open} onClose={onClose} title="Edit event" sub="Changes apply everywhere at once: cards, messages and the scanner."
       actions={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="ink" loading={save.isPending} onClick={() => save.mutate()} disabled={!form.name || !form.date}>Save changes</Button></>}>
       <div className="stack" style={{ gap: 14 }}>
-        <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
+        <Field label="Event name" error={err?.field("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus={!phone} /></Field>
         <div className="row" style={{ alignItems: "flex-start" }}>
           <Field label="Date" error={err?.field("date")}><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
           <Field label="Start time"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></Field>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ws } from "../../api/client";
 import type { Member, Paginated, Role } from "../../api/types";
-import { Avatar, Badge, Button, Empty, Field, Input, Modal, useToast } from "../../components/ui";
+import { Avatar, Badge, Button, Empty, Field, Input, Modal, useToast, useIsPhone } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
 
 const roleLabel: Record<Role, string> = { admin: "Admin", coordinator: "Coordinator", door_staff: "Door staff" };
@@ -54,6 +54,7 @@ export function StaffPanel({ standalone }: { standalone?: boolean }) {
 }
 
 export function AddMemberModal({ open, onClose, onAdded, defaultRole = "door_staff" }: { open: boolean; onClose: () => void; onAdded: () => void; defaultRole?: Role }) {
+  const phone = useIsPhone();
   const { slug } = useWorkspace();
   const toast = useToast();
   const [form, setForm] = useState({ full_name: "", email: "", phone: "", role: defaultRole as Role });
@@ -67,7 +68,7 @@ export function AddMemberModal({ open, onClose, onAdded, defaultRole = "door_sta
     <Modal open={open} onClose={onClose} title="Add a staff member" sub="They get a link to set a password. The account activates when they do."
       actions={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="ink" loading={m.isPending} disabled={!form.email} onClick={() => m.mutate()}>Send invite</Button></>}>
       <div className="stack" style={{ gap: 14 }}>
-        <Field label="Full name"><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} autoFocus /></Field>
+        <Field label="Full name"><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} autoFocus={!phone} /></Field>
         <Field label="Email" error={err?.field("email")}><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
         <Field label="Phone" optional hint="If given, the invite also goes by SMS."><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} inputMode="tel" /></Field>
         <Field label="Role">
