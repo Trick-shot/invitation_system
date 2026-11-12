@@ -41,13 +41,21 @@ export const router = createBrowserRouter([
   { element: <RequireAuth />, errorElement: <ErrorPage />, children: [
     { path: "/no-workspace", element: <NoWorkspace /> },
     { path: "/scan", element: <Page><P.Scanner /></Page> },
-    { path: "/platform", element: <Page><P.Platform /></Page> },
+    { path: "/platform", element: <Page><P.PlatformShell /></Page>, children: [
+      { index: true, element: <P.PlatformWorkspaces /> },
+      { path: "workspaces/:id", element: <P.PlatformWorkspaceDetail /> },
+      { path: "earnings", element: <P.PlatformEarnings /> },
+      { path: "earnings/:eventId", element: <P.PlatformEventBill /> },
+      { path: "rates", element: <P.PlatformRates /> },
+    ] },
     { path: "/app/:slug/onboarding/:step", element: <Page><P.Onboarding /></Page> },
     { path: "/app/:slug/onboarding/:eventId/:step", element: <Page><P.Onboarding /></Page> },
     { path: "/app/:slug", element: <Page><P.Shell /></Page>, children: [
       { index: true, element: <P.Events /> },
       { path: "staff", element: <P.StaffPage /> },
       { path: "settings", element: <P.Settings /> },
+      { path: "billing", element: <P.Billing /> },
+      { path: "billing/:eventId", element: <P.EventBillPage /> },
       { path: "events/:eventId", element: <P.EventLayout />, children: [
         { index: true, element: <P.Overview /> },
         { path: "guests", element: <P.Guests /> },

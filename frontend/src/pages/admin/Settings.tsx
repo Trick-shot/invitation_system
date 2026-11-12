@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ApiError, ws } from "../../api/client";
-import type { WorkspaceSettings } from "../../api/types";
+import type { WorkspaceSettings, ActivityRow } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
 import { Button, Field, Input, Modal, useToast, ErrorState, Skel, SkelPanel } from "../../components/ui";
 import { Topbar, useWorkspace } from "./Shell";
@@ -11,6 +11,7 @@ export default function Settings() {
   const { refresh } = useAuth();
   const toast = useToast();
   const q = useQuery({ queryKey: ["settings", slug], queryFn: () => api<WorkspaceSettings>(`${ws(slug)}/settings/`), enabled: role === "admin" });
+  const activity = useQuery({ queryKey: ["activity", slug], queryFn: () => api<ActivityRow[]>(`${ws(slug)}/activity/`), enabled: role === "admin" });
   const [form, setForm] = useState({ name: "", default_country: "TZ", default_language: "en", timezone: "Africa/Dar_es_Salaam" });
   const [cred, setCred] = useState({ sender_id: "", api_key: "", secret_key: "" });
   const [credOpen, setCredOpen] = useState(false);
@@ -50,6 +51,13 @@ export default function Settings() {
           <h4>Your data</h4>
           <p className="muted">Everything this workspace owns, as one JSON file: events and guests with phone numbers and arrival counts.</p>
           <div className="row"><Button onClick={exportAll}>Download export</Button><span className="quiet" style={{ fontSize: 13 }}>To delete the workspace entirely, ask Trickshot; it is done by hand on purpose.</span></div>
+        </section>
+        <section className="panel panel-pad stack" style={{ gap: 10 }}>
+          <h4>Activity</h4>
+          <p className="muted">When Trickshot support opens your workspace to help, it shows here: every visit, why, and anything changed.</p>
+          {!activity.data ? <div className="skeleton" style={{ height: 40 }} />
+            : activity.data.length === 0 ? <p className="quiet" style={{ fontSize: 14 }}>No support visits so far.</p>
+            : <div className="activity" style={{ margin: "0 -20px" }}>{activity.data.map((a, i) => <div key={i}><time>{new Date(a.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</time><span>{a.summary}{a.reason && <small>Reason: {a.reason}</small>}</span></div>)}</div>}
         </section>
       </div>
       <Modal open={credOpen} onClose={() => setCredOpen(false)} title="Your Beem account" sub="Keys are stored encrypted and never shown again. The sender ID must already be approved by Beem."

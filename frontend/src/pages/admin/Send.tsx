@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, ev } from "../../api/client";
-import type { Dashboard, Invitation, MessageTemplate, Paginated, SendProgress } from "../../api/types";
+import type { Dashboard, EventBillData, Invitation, MessageTemplate, Paginated, SendProgress } from "../../api/types";
+import { tzs } from "../platform/money";
+import { useWorkspace } from "./Shell";
 import { Badge, Button, Track, useToast, DoneTick, ErrorState, Skel, SkelPanel } from "../../components/ui";
 import { useEvent } from "./EventLayout";
 import { segments } from "./Message";
@@ -11,6 +13,7 @@ type Phase = "idle" | "sending" | "done";
 
 export default function Send() {
   const { slug, eventId, event, refetch } = useEvent();
+  const { role } = useWorkspace();
   const [params] = useSearchParams();
   const qc = useQueryClient();
   const toast = useToast();
@@ -36,6 +39,7 @@ export default function Send() {
   const unsentCount = unsent.data?.count ?? 0;
   const count = scope === "all" ? total : scope === "failed" ? failed : unsentCount;
   const seg = msg.data ? segments(msg.data.preview) : null;
+  const bill = useQuery({ queryKey: ["event-bill", slug, eventId], queryFn: () => api<EventBillData>(`${ev(slug, eventId)}/bill/`), refetchInterval: phase === "idle" ? false : 4000 });
   const base = `/app/${slug}/events/${eventId}`;
   // Each blocker says what is wrong and links to where it gets fixed.
   const blockers = ([
@@ -91,9 +95,29 @@ export default function Send() {
         <div><Button variant="primary" size="xl" disabled={count === 0 || blockers.length > 0} loading={send.isPending} onClick={() => send.mutate()}>Send {count} invitation{count === 1 ? "" : "s"}</Button></div>
       </div>
       <div className="panel panel-pad stack">
-        <div className="kicker">Cost estimate</div>
-        <div className="mono" style={{ fontSize: 28, fontWeight: 500 }}>{seg ? `${seg.segments * count} SMS` : "No message yet"}</div>
-        <div className="quiet" style={{ fontSize: 13 }}>{seg ? `${seg.segments} per guest × ${count} guests. ${seg.characters} characters, ${seg.encoding}.` : "Write the message to see the cost."}</div>
+        {/* Figma "Admin / Send (with cost)": what this send costs, then the event's running bill. */}
+        <h3>What this send costs</h3>
+        {seg ? (
+          <dl className="cost-rows">
+            <div><dt>Recipients</dt><dd>{count.toLocaleString("en-US")}</dd></div>
+            <div><dt>SMS each</dt><dd>{seg.segments}</dd></div>
+            <div><dt>SMS in this send</dt><dd>{(seg.segments * count).toLocaleString("en-US")}</dd></div>
+            {bill.data && <div><dt>Price per SMS</dt><dd>TZS {tzs(bill.data.price_per_sms)}</dd></div>}
+            {bill.data && <div className="strong"><dt>This send</dt><dd>TZS {tzs(seg.segments * count * bill.data.price_per_sms)}</dd></div>}
+          </dl>
+        ) : <p className="quiet" style={{ fontSize: 13 }}>Write the message to see the cost.</p>}
+        <p className="quiet" style={{ fontSize: 13 }}>{seg ? `${seg.characters} characters. ` : ""}A message over 160 characters counts as 2 SMS. This is added to the event's bill, which you pay after the event.</p>
+        <div className="hairline" />
+        <h3>Bill for this event</h3>
+        {!bill.data ? <div className="skeleton" style={{ height: 90 }} /> : (
+          <dl className="cost-rows">
+            {bill.data.by_kind.length === 0 && <div><dt>Nothing sent yet</dt><dd>0 SMS</dd></div>}
+            {bill.data.by_kind.map((k) => <div key={k.kind}><dt>{k.label}{k.kind === "welcome" ? "s at the door" : "s"}</dt><dd>{tzs(k.sms)} SMS</dd></div>)}
+            <div><dt>Total so far</dt><dd>{tzs(bill.data.sms)} SMS</dd></div>
+            <div className="strong"><dt>Amount so far</dt><dd>TZS {tzs(bill.data.amount)}</dd></div>
+          </dl>
+        )}
+        {bill.data && <p className="quiet" style={{ fontSize: 13 }}>{bill.data.bill.status === "open" ? "Open." : bill.data.bill.status === "invoiced" ? "Invoiced." : "Paid."}{bill.data.still_to_come.welcome_texts ? ` About ${bill.data.still_to_come.welcome_texts} more welcome texts if everyone still expected arrives.` : ""} Your invoice comes when the event closes.{role === "admin" && <> <Link to={`/app/${slug}/billing/${eventId}`}>Open the bill</Link></>}</p>}
         <div className="hairline" />
         <div className="kicker">Message</div>
         <div className="bubble" style={{ background: "var(--bg-inset)" }}>{msg.data?.preview ?? "No message yet."}</div>

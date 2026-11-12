@@ -74,7 +74,7 @@ class MeSerializer(serializers.ModelSerializer):
 
         qs = SupportSession.objects.filter(user=user, ended_at__isnull=True, expires_at__gt=timezone.now()).select_related("workspace")
         return [
-            {"id": s.pk, "mode": s.mode, "reason": s.reason, "expires_at": s.expires_at, "workspace": WorkspaceBriefSerializer(s.workspace).data}
+            {"id": s.pk, "mode": s.mode, "reason": s.reason, "expires_at": s.expires_at, "workspace_id": s.workspace_id, "workspace": WorkspaceBriefSerializer(s.workspace).data}
             for s in qs
         ]
 

@@ -1,11 +1,12 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { api, ws } from "../../api/client";
+import { api, ApiError, ws } from "../../api/client";
 import type { Event } from "../../api/types";
 import { useAuth } from "../../auth/AuthProvider";
-import { Avatar, Button, CardStack, CardThumb, Logo, PageTransition, Skel, SkelPanel, useScrollLock } from "../../components/ui";
+import { Avatar, Button, CardStack, CardThumb, Field, Input, Logo, Modal, PageTransition, Skel, SkelPanel, useScrollLock, useToast } from "../../components/ui";
+import "../platform/platform.css";
 import { whenIdle } from "../../lazy";
 import { EventLayout, Overview } from "../../pages";
 import "./admin.css";
@@ -13,6 +14,7 @@ import "./admin.css";
 export const Icon = {
   events: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M2.5 7h11M5.5 2v3M10.5 2v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
   staff: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.5" /><path d="M3 13.5c.6-2.6 2.4-4 5-4s4.4 1.4 5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  billing: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 2.5h9v11l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M5.5 6h5M5.5 8.5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
   settings: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.5" /><path d="M8 1.8v1.7M8 12.5v1.7M1.8 8h1.7M12.5 8h1.7M3.6 3.6l1.2 1.2M11.2 11.2l1.2 1.2M3.6 12.4l1.2-1.2M11.2 4.8l1.2-1.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
   search: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
   updown: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>,
@@ -33,11 +35,13 @@ export function useWorkspace() {
   const { slug = "" } = useParams();
   const { me } = useAuth();
   const membership = me?.memberships.find((m) => m.workspace.slug === slug) ?? null;
-  return { slug, workspace: membership?.workspace ?? null, role: membership?.role ?? null, me };
+  // The platform owner inside a support session sees the workspace as an admin does.
+  const support = membership ? null : me?.support?.find((s) => s.workspace.slug === slug) ?? null;
+  return { slug, workspace: membership?.workspace ?? support?.workspace ?? null, role: membership?.role ?? (support ? ("admin" as const) : null), me, support };
 }
 
 export default function Shell() {
-  const { slug, workspace, role, me } = useWorkspace();
+  const { slug, workspace, role, me, support } = useWorkspace();
   const { signOut } = useAuth();
   const nav = useNavigate();
   const { eventId } = useParams();
@@ -71,6 +75,7 @@ export default function Shell() {
           <div className="kicker">Event</div>
           <NavLink to={`/app/${slug}`} end className="navitem">{Icon.events} Events</NavLink>
           <NavLink to={`/app/${slug}/staff`} className="navitem">{Icon.staff} Staff</NavLink>
+          {role === "admin" && <NavLink to={`/app/${slug}/billing`} className="navitem">{Icon.billing} Billing</NavLink>}
           <NavLink to={`/app/${slug}/settings`} className="navitem">{Icon.settings} Settings</NavLink>
         </nav>
         <div className="foot">
@@ -79,11 +84,65 @@ export default function Shell() {
         </div>
       </aside>
       <div className="main">
+        {support && <SupportBanner session={support} />}
         <Suspense fallback={<ContentSkeleton />}>
           <PageTransition depth={4}><Outlet context={{ events: events.data?.results ?? [], eventsQuery: events, refetchEvents: events.refetch, openMenu: () => setDrawer(true) }} /></PageTransition>
         </Suspense>
       </div>
     </div>
+  );
+}
+
+/**
+ * The owner inside a client's workspace (Figma Support view 200:426, edit mode 200:807).
+ * Always visible, so nobody forgets whose workspace they are in or that changes are logged.
+ */
+function SupportBanner({ session }: { session: NonNullable<ReturnType<typeof useWorkspace>["support"]> }) {
+  const { refresh } = useAuth();
+  const nav = useNavigate();
+  const toast = useToast();
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState("");
+  const base = `/api/platform/workspaces/${session.workspace_id}/support`;
+  const go = useMutation({
+    mutationFn: (body: { mode: "view" | "edit"; reason?: string }) => api(`${base}/`, { method: "POST", body }),
+    onSuccess: async (_r, body) => { await refresh(); setAsking(false); setReason(""); toast(body.mode === "edit" ? "Edit mode on for 30 minutes. Every change is logged." : "Edit mode ended. The client has been sent a summary."); },
+    onError: (e) => toast((e as ApiError).summary ?? "Could not change mode", true),
+  });
+  const leave = useMutation({
+    mutationFn: () => api(`${base}/leave/`, { method: "POST" }),
+    // Leave the page first: once the session is gone this workspace is no longer reachable.
+    onSuccess: async () => { nav(`/platform/workspaces/${session.workspace_id}`); await refresh(); },
+  });
+  // Edit mode ends by itself: refresh when it expires so the banner and access follow.
+  useEffect(() => {
+    const ms = new Date(session.expires_at).getTime() - Date.now();
+    if (ms <= 0) { void refresh(); return; }
+    const t = setTimeout(() => void refresh(), Math.min(ms + 1500, 2 ** 31 - 1));
+    return () => clearTimeout(t);
+  }, [session.expires_at, refresh]);
+  const ends = new Date(session.expires_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return (
+    <>
+      <div className={`support-banner ${session.mode === "edit" ? "edit" : ""}`} role="status">
+        <span className="grow">
+          {session.mode === "edit"
+            ? <><b>Edit mode, ends {ends}</b>Reason: {session.reason}. Every change is logged and the client will be told.</>
+            : <><b>Support view</b>You are seeing {session.workspace.name} as its admins see it. Read-only. This visit is logged.</>}
+        </span>
+        {session.mode === "edit"
+          ? <button className="btn btn-sm" disabled={go.isPending} onClick={() => go.mutate({ mode: "view" })}>End edit mode</button>
+          : <button className="btn btn-sm" onClick={() => setAsking(true)}>Enter edit mode</button>}
+        <button className="btn btn-sm" disabled={leave.isPending} onClick={() => leave.mutate()}>Leave</button>
+      </div>
+      <Modal open={asking} onClose={() => setAsking(false)} title="Enter edit mode" sub={`You will be able to change ${session.workspace.name}'s guests, events and settings for 30 minutes. Every change is logged with your name, and the client's admins get a summary when you finish.`}
+        actions={<><Button variant="ghost" onClick={() => setAsking(false)}>Cancel</Button><Button variant="ink" loading={go.isPending} disabled={reason.trim().length < 5} onClick={() => go.mutate({ mode: "edit", reason })}>Start edit mode</Button></>}>
+        <div className="stack" style={{ gap: 12 }}>
+          <Field label="Why you need it (required)" hint="The client sees this in their activity log."><textarea className="input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Client asked on WhatsApp to fix a wrong guest phone number." /></Field>
+          <Field label="How long"><Input value="30 minutes" readOnly /></Field>
+        </div>
+      </Modal>
+    </>
   );
 }
 
