@@ -41,7 +41,7 @@ export default function Template() {
   // Dragging in image-fraction space so it is independent of zoom.
   const drag = useRef<{ mode: "move" | "resize"; sx: number; sy: number; start: typeof slot } | null>(null);
   const toFrac = (e: RPointerEvent) => { const r = wrap.current!.getBoundingClientRect(); return { fx: (e.clientX - r.left) / r.width, fy: (e.clientY - r.top) / r.height, ar: r.width / r.height }; };
-  const onDown = (mode: "move" | "resize") => (e: RPointerEvent) => { e.preventDefault(); (e.target as Element).setPointerCapture(e.pointerId); const { fx, fy } = toFrac(e); drag.current = { mode, sx: fx, sy: fy, start: slot }; };
+  const onDown = (mode: "move" | "resize") => (e: RPointerEvent) => { e.preventDefault(); e.stopPropagation(); (e.currentTarget as Element).setPointerCapture(e.pointerId); const { fx, fy } = toFrac(e); drag.current = { mode, sx: fx, sy: fy, start: slot }; };
   const onMove = (e: RPointerEvent) => {
     if (!drag.current || !q.data) return;
     const { fx, fy, ar } = toFrac(e); const d = drag.current; const dx = fx - d.sx, dy = fy - d.sy;
