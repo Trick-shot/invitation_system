@@ -200,7 +200,12 @@ SENTRY_DSN = config("SENTRY_DSN", default="")
 if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
-    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration, ignore_logger
+
+    # Bots probing the server by IP or with made-up Host headers. Django already refuses
+    # them (that is ALLOWED_HOSTS working) and nginx drops most before they get here;
+    # reporting each one would bury real errors.
+    ignore_logger("django.security.DisallowedHost")
 
     def _scrub(event, hint):
         # Guest names and phone numbers travel in request bodies (imports, scans).
