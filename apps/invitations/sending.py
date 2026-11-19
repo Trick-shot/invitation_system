@@ -5,6 +5,7 @@ next sequence number so the dashboard can report rework honestly.
 """
 
 import logging
+import time
 
 from django.db import transaction
 from django.db.models import Max
@@ -20,6 +21,7 @@ from apps.messaging.providers import (
 from apps.messaging.service import record_usage
 from apps.tenancy.context import workspace_context
 from apps.tenancy.models import Workspace
+from backend import telemetry
 
 from .models import Delivery, Invitation
 
@@ -68,17 +70,25 @@ def send_delivery(delivery_id: int, workspace_id: int):
             Delivery.objects.filter(pk=delivery.pk).update(status=Delivery.Status.FAILED, error="Workspace closed", updated_at=timezone.now())
             return "closed"
         provider = get_provider_for(workspace)
+        started = time.monotonic()
+        tags = {"provider": provider.name, "workspace": workspace.slug, "kind": "resend" if delivery.sequence > 1 else "invitation"}
         try:
             result = provider.send(to=delivery.invitation.phone, body=delivery.body, reference=f"d{delivery.pk}")
         except ProviderTransientError as exc:
             # Let Django-Q retry by raising; mark the error so the UI can show it meanwhile.
             Delivery.objects.filter(pk=delivery.pk).update(error=str(exc)[:300], updated_at=timezone.now())
+            telemetry.count("sms.invitation", status="retry", **tags)
             raise
         except ProviderError as exc:
             Delivery.objects.filter(pk=delivery.pk).update(
                 status=Delivery.Status.FAILED, error=str(exc)[:300], provider=provider.name, updated_at=timezone.now()
             )
+            telemetry.count("sms.invitation", status="failed", **tags)
+            # The provider's message can quote the phone number, so only its type goes to Sentry.
+            telemetry.warning("Invitation SMS refused by provider", delivery_id=delivery.pk, event_id=delivery.invitation.event_id, error_type=type(exc).__name__, **tags)
             return "failed"
+        telemetry.count("sms.invitation", status="sent", **tags)
+        telemetry.timing("sms.provider_send", (time.monotonic() - started) * 1000, **tags)
         Delivery.objects.filter(pk=delivery.pk).update(
             status=Delivery.Status.SENT,
             provider=provider.name,

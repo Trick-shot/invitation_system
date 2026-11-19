@@ -207,6 +207,20 @@ if SENTRY_DSN:
     # reporting each one would bury real errors.
     ignore_logger("django.security.DisallowedHost")
 
+    import re as _re
+
+    _TOKEN = _re.compile(r"/i/[A-Za-z0-9_-]{6,}")
+    # Loggers that would flood Sentry Logs with noise or carry guest links:
+    # gunicorn.access is one line per request (with /i/<token> paths), django.request
+    # is mostly bots asking for /wp-admin, DisallowedHost is the IP scanners.
+    _QUIET = ("gunicorn.access", "django.request", "django.server", "django.security.DisallowedHost")
+
+    def _scrub_log(log, hint):
+        if str(log.get("attributes", {}).get("logger.name", "")).startswith(_QUIET):
+            return None
+        log["body"] = _TOKEN.sub("/i/:token", str(log.get("body", "")))
+        return log
+
     def _scrub(event, hint):
         # Guest names and phone numbers travel in request bodies (imports, scans).
         # Never send bodies or cookies to Sentry; the stack trace is enough to fix a bug.
@@ -219,8 +233,16 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         environment=config("SENTRY_ENVIRONMENT", default="production"),
         release=config("SENTRY_RELEASE", default=None) or ((BASE_DIR / ".release").read_text().strip() if (BASE_DIR / ".release").exists() else None),
-        integrations=[DjangoIntegration(), LoggingIntegration(event_level=logging.ERROR)],
+        # Python logging at INFO and above also goes to Sentry Logs; ERROR and above still opens an issue.
+        integrations=[DjangoIntegration(), LoggingIntegration(event_level=logging.ERROR, sentry_logs_level=logging.INFO)],
         traces_sample_rate=config("SENTRY_TRACES_SAMPLE_RATE", default=0.1, cast=float),
+        # Profiles: the profiler runs while a sampled request or job is in progress, so it
+        # follows the traces rate above. Set 0 to switch it off on a busy day.
+        profile_session_sample_rate=config("SENTRY_PROFILE_SESSION_SAMPLE_RATE", default=1.0, cast=float),
+        profile_lifecycle="trace",
+        enable_logs=True,
+        before_send_log=_scrub_log,
+        enable_metrics=True,
         send_default_pii=False,
         max_request_body_size="never",
         before_send=_scrub,

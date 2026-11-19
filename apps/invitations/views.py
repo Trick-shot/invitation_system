@@ -166,6 +166,11 @@ class InvitationViewSet(WorkspaceViewSet):
             delivery_ids = queue_send(event=event, invitation_ids=ids, user=request.user)
         except SendBlocked as exc:
             raise ValidationError(str(exc))
+        from backend import telemetry
+
+        mode = "failed" if d.get("only_failed") else "unsent" if d.get("only_unsent") else "chosen" if d.get("invitation_ids") else "everyone"
+        telemetry.info("Send started", workspace=self.workspace.slug, event_id=event.pk, queued=len(delivery_ids), mode=mode, user_id=request.user.pk)
+        telemetry.count("send.started", workspace=self.workspace.slug, mode=mode)
         return Response({"queued": len(delivery_ids), "delivery_ids": delivery_ids}, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=False, methods=["get"], url_path="send/progress")

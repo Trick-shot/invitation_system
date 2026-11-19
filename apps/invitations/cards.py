@@ -5,6 +5,7 @@ invitation and regenerated only when the template or slot changes.
 
 import io
 import logging
+import time
 
 import segno
 from django.core.files.base import ContentFile
@@ -14,6 +15,7 @@ from PIL import Image
 
 from apps.events.models import CardTemplate
 from apps.tenancy.context import workspace_context
+from backend import telemetry
 
 from .models import Invitation
 
@@ -55,12 +57,16 @@ def generate_card(invitation_id: int, workspace_id: int):
             Invitation.objects.filter(pk=invitation.pk).update(card_status=Invitation.CardStatus.PENDING, card_error="No template yet")
             return "no-template"
         Invitation.objects.filter(pk=invitation.pk).update(card_status=Invitation.CardStatus.GENERATING)
+        started = time.monotonic()
         try:
             image = render_card(template, invitation)
         except Exception as exc:
             log.exception("Card render failed for invitation %s", invitation_id)
             Invitation.objects.filter(pk=invitation.pk).update(card_status=Invitation.CardStatus.FAILED, card_error=str(exc)[:200])
+            telemetry.count("card.render", result="failed", workspace=workspace.slug)
             return "failed"
+        telemetry.count("card.render", result="ready", workspace=workspace.slug)
+        telemetry.timing("card.render", (time.monotonic() - started) * 1000, workspace=workspace.slug, bytes=len(image))
         if invitation.card:
             invitation.card.delete(save=False)
         invitation.card.save(f"{invitation.token}.jpg", ContentFile(image), save=False)

@@ -11,6 +11,7 @@ import { VerdictMark } from "./VerdictMark";
 import * as sounds from "./sounds";
 import { soundEnabled, setSoundEnabled } from "./sounds";
 import { Icon } from "../admin/Shell";
+import { count, logWarn, timing } from "../../monitoring";
 import "./scanner.css";
 
 const deviceId = () => { let d = localStorage.getItem("ti.device"); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem("ti.device", d); } return d; };
@@ -96,9 +97,12 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
     busy.current = true; paused.current = true; setState({ kind: "checking" }); sounds.tick();
     const payload = { event_id: event.id, device_id: deviceId(), scanned_at: new Date().toISOString(), ...body };
     let lastErr: unknown = null;
+    const started = performance.now();
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const v = await api<Verdict>("/api/scan/", { method: "POST", body: payload });
+        // Door to verdict, as the door person feels it (network and retries included).
+        timing("scan.roundtrip", performance.now() - started, { result: v.result, manual: !!body.invitation_id, attempts: attempt + 1 });
         setArrived(v.event_arrived); setState({ kind: "verdict", v, n: ++seq.current });
         const tone = toneOf(v.result);
         // Three sounds a door team learns in minutes: ding-ding (in), falling dun-dun (already in), buzz (not ours).
@@ -116,7 +120,11 @@ function ScanScreen({ event, onChangeEvent }: { event: ScanEvent; onChangeEvent:
     }
     busy.current = false;
     if (lastErr instanceof ApiError) { sounds.rejected(); setState({ kind: "verdict", n: ++seq.current, v: { result: "unknown", guest_name: "", capacity: 0, admitted_count: 0, previous_scans: [], invitation_id: null, event_arrived: arrivedRef.current ?? 0 } }); }
-    else setState({ kind: "offline", n: ++seq.current });
+    else {
+      count("scan.offline", 1, { event_id: event.id });
+      logWarn("Scanner could not reach the server", { event_id: event.id, attempts: 3, waited_ms: Math.round(performance.now() - started) });
+      setState({ kind: "offline", n: ++seq.current });
+    }
   }, [event.id]);
 
   // The camera starts once and stays on. Stopping it between scans is what made

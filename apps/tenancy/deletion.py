@@ -63,6 +63,9 @@ def schedule(ws: Workspace, *, by, reason: str) -> Workspace:
             support.end(s)
         AuditEvent.objects.create(workspace=ws, actor=by, kind=AuditEvent.Kind.DELETION_SCHEDULED, summary=f"Deletion scheduled for {timezone.localtime(ws.delete_after):%d %b %Y}", reason=reason)
         transaction.on_commit(lambda: _after_schedule(ws))
+    from backend import telemetry
+
+    telemetry.info("Workspace deletion scheduled", workspace_id=ws.pk, delete_after=ws.delete_after.isoformat(), by_user_id=by.pk)
     return ws
 
 
@@ -78,6 +81,9 @@ def restore(ws: Workspace, *, by) -> Workspace:
         ws.save(update_fields=["status", "status_before_deletion", "delete_after", "deletion_reason", "deletion_requested_by"])
         AuditEvent.objects.create(workspace=ws, actor=by, kind=AuditEvent.Kind.RESTORED, summary="Deletion cancelled; the workspace is back as it was")
         transaction.on_commit(lambda: _tell_admins_restored(ws))
+    from backend import telemetry
+
+    telemetry.info("Workspace restored", workspace_id=ws.pk, by_user_id=by.pk)
     return ws
 
 

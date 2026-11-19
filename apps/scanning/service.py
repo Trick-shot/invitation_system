@@ -6,6 +6,7 @@ capacity. One UPDATE, no read-then-write, so two phones scanning the same
 card at the same instant cannot both succeed past capacity.
 """
 
+import time
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -16,6 +17,7 @@ from apps.events.models import Event
 from apps.invitations.models import Invitation
 from apps.tenancy.context import workspace_context
 from apps.tenancy.models import Membership
+from backend import telemetry
 
 from .models import ScanLog
 
@@ -41,6 +43,18 @@ def _history(invitation):
 
 
 def admit(
+    *, event: Event, token: str | None, invitation: Invitation | None, staff, device_id: str, scanned_at, manual: bool = False
+) -> Verdict:
+    """Measure every verdict (how many, how fast) around the real work in _admit."""
+    started = time.monotonic()
+    verdict = _admit(event=event, token=token, invitation=invitation, staff=staff, device_id=device_id, scanned_at=scanned_at, manual=manual)
+    tags = {"result": verdict.result, "manual": manual, "workspace": event.workspace.slug}
+    telemetry.count("scan.verdict", **tags)
+    telemetry.timing("scan.decide", (time.monotonic() - started) * 1000, **tags)
+    return verdict
+
+
+def _admit(
     *, event: Event, token: str | None, invitation: Invitation | None, staff, device_id: str, scanned_at, manual: bool = False
 ) -> Verdict:
     """

@@ -47,6 +47,10 @@ def record_charge(*, workspace, body: str, kind: str, event=None, invitation=Non
         )
         if event is not None:
             EventBill.objects.all_workspaces().get_or_create(event=event, defaults={"workspace": workspace})
+        from backend import telemetry
+
+        # Segments are what Beem bills: this is the number behind the Earnings page.
+        telemetry.count("sms.segments", charge.segments, kind=kind, workspace=workspace.slug, own_keys=own)
         return charge
     except Exception as exc:  # noqa: BLE001
         log.exception("Could not record SMS charge: %s", exc)
@@ -375,6 +379,9 @@ def reprice_open_bills(*, by, notify: bool = True) -> dict:
             )
         if notify:
             transaction.on_commit(lambda: _tell_clients_repriced(preview))
+    from backend import telemetry
+
+    telemetry.info("Open bills re-priced", events=len(preview["events"]), price_per_sms=float(price), amount_before=float(preview["amount_now"]), amount_after=float(preview["amount_after"]), by_user_id=by.pk, notified=notify)
     return preview
 
 

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
+import { count } from "../../monitoring";
 import type { PublicInvitation } from "../../api/types";
 import "../../components/ui/ui.css";
 import "./guest.css";
@@ -204,10 +205,13 @@ function SaveButton({ file, src, token }: { file: File | null; src: string | nul
   };
   const save = async () => {
     if (!file || !src) return;
+    const device = IOS ? "ios" : ANDROID ? "android" : "desktop";
     if (IOS && canShare) {
-      try { await navigator.share({ files: [file] }); return; } catch (e) { if ((e as Error).name === "AbortError") return; }
+      try { await navigator.share({ files: [file] }); count("card.save", 1, { method: "share_sheet", device }); return; } catch (e) { if ((e as Error).name === "AbortError") return; }
     }
-    if (IN_APP || (IOS && !canShare)) { setHold(true); return; }
+    // In-app browsers (WhatsApp, Instagram) cannot save files: the guest has to press and hold.
+    if (IN_APP || (IOS && !canShare)) { count("card.save", 1, { method: "press_and_hold", device, in_app: IN_APP }); setHold(true); return; }
+    count("card.save", 1, { method: "download", device });
     download();
     if (ANDROID) setNote("Saved to Downloads. Your gallery shows it in the Download album.");
   };

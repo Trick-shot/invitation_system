@@ -49,6 +49,9 @@ def start(user, workspace, *, mode: str, reason: str = "") -> SupportSession:
     else:
         session = SupportSession.objects.create(user=user, workspace=workspace, mode=mode, expires_at=now + timedelta(hours=VIEW_HOURS))
         AuditEvent.objects.create(workspace=workspace, actor=user, kind=AuditEvent.Kind.SUPPORT_VIEW, summary=f"{name_of(user)} from Trickshot viewed the workspace (read-only)", session=session)
+    from backend import telemetry
+
+    telemetry.info("Support session started", workspace=workspace.slug, mode=mode, user_id=user.pk, session_id=session.pk)
     return session
 
 
